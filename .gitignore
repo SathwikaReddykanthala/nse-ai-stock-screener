@@ -1,0 +1,35 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Backups
+src/app_backup.py
+*_backup.py
+
+# Historical/generated stock data
+dataset/history/
+
+# Live/generated files
+dataset/live_*.csv
+
+# Generated screening/trading outputs
+dataset/angel_screen_tokens.csv
+dataset/crossover_trades.csv
+dataset/final_live_screen.csv
+dataset/final/_live_screen.csv
+
+# Python-generated model/output files
+dataset/live_*.pkl
+dataset/live_*.joblib

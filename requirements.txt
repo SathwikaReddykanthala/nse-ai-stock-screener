@@ -1,0 +1,6 @@
+streamlit
+pandas
+streamlit-autorefresh
+smartapi-python
+pyotp
+websocket-client
