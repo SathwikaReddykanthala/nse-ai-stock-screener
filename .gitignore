@@ -4,7 +4,13 @@ __pycache__/
 
 .env
 .env.*
-.streamlit/secrets.toml
 
-dataset/live_ticks.csv
-dataset/live_ltp_history.csv
+logs/
+
+src/app_backup.py
+
+dataset/history/
+dataset/live_*.csv
+dataset/final_live_screen.csv
+dataset/angel_screen_tokens.csv
+dataset/crossover_trades.csv
