@@ -1436,11 +1436,8 @@ features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
 
 if ai_df.empty:
-    st.error(
-        "live_ai_signals.csv is empty or missing.\n\n"
-        "Run live_ai_signal.py first."
-    )
-    st.stop()
+    ai_df = pd.DataFrame()
+        
 
 if smma_df.empty:
     st.warning(
