@@ -42,8 +42,37 @@ LIVE_FEATURES = DATASET / "live_ml_features.csv"
 LIVE_SMMA = DATASET / "live_smma.csv"
 LIVE_AI = DATASET / "live_ai_signals.csv"
 TRADE_LOG = DATASET / "live_trade_log.csv"
+# ============================================================
+# SUPABASE CONNECTION
+# ============================================================
+
+SUPABASE_URL = None
+SUPABASE_KEY = None
+
+# Local .env support
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except Exception:
+    pass
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+# Streamlit Cloud Secrets support
+try:
+    if hasattr(st, "secrets"):
+        SUPABASE_URL = st.secrets.get(
+            "SUPABASE_URL",
+            SUPABASE_URL
+        )
+
+        SUPABASE_KEY = st.secrets.get(
+            "SUPABASE_ANON_KEY",
+            SUPABASE_KEY
+        )
+except Exception:
+    pass
 
 supabase = None
 
@@ -53,7 +82,8 @@ if SUPABASE_URL and SUPABASE_KEY:
             SUPABASE_URL,
             SUPABASE_KEY
         )
-    except Exception:
+    except Exception as e:
+        print(f"Supabase connection failed: {e}")
         supabase = None
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -1445,7 +1475,12 @@ def etq_for_symbol(symbol, live):
 # LOAD STOCKAI PIPELINE FILES
 # ============================================================
 
-# Load AI signals from Supabase when available.
+# ============================================================
+# LOAD AI SIGNALS
+# ============================================================
+
+ai_df = pd.DataFrame()
+
 if supabase is not None:
     try:
         response = (
@@ -1457,10 +1492,16 @@ if supabase is not None:
 
         ai_df = pd.DataFrame(response.data)
 
-    except Exception:
-        ai_df = read_csv(LIVE_AI)
-else:
+    except Exception as e:
+        st.warning(
+            f"Unable to load live signals from Supabase: {e}"
+        )
+
+# Local fallback
+if ai_df.empty:
     ai_df = read_csv(LIVE_AI)
+
+
 smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
