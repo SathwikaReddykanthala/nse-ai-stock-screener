@@ -1500,29 +1500,22 @@ if supabase is not None:
         st.error(
             f"Supabase read failed: {e}"
         )
+
 else:
     st.error(
         "Supabase client was not created. "
-        "Check SUPABASE_URL and SUPABASE_ANON_KEY in Streamlit Secrets."
+        "Check SUPABASE_URL and SUPABASE_ANON_KEY "
+        "in Streamlit Secrets."
     )
-    except Exception as e:
-        st.warning(
-            f"Unable to load live signals from Supabase: {e}"
-        )
 
 # Local fallback
 if ai_df.empty:
     ai_df = read_csv(LIVE_AI)
 
-
-smma_df = read_csv(LIVE_SMMA)
-features_df = read_csv(LIVE_FEATURES)
-live = read_csv(LIVE_TICKS)
-
 if ai_df.empty:
     st.error(
-        "live_ai_signals.csv is empty or missing.\n\n"
-        "Run live_ai_signal.py first."
+        "No AI signal data is available from Supabase "
+        "or the local CSV."
     )
     st.stop()
 
