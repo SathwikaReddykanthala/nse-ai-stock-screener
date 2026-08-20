@@ -1,9 +1,11 @@
 streamlit
 pandas
-numpy
-scikit-learn
-joblib
 streamlit-autorefresh
 smartapi-python
 pyotp
 websocket-client
+supabase
+python-dotenv
+numpy
+scikit-learn
+joblib
