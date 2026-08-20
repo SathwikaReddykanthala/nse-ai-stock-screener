@@ -33,3 +33,6 @@ dataset/final/_live_screen.csv
 # Python-generated model/output files
 dataset/live_*.pkl
 dataset/live_*.joblib
+
+# Large historical dataset
+dataset/historical_prices.csv

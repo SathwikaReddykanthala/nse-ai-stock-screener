@@ -378,7 +378,7 @@ def write_tick(data):
 
     print(
         f"LIVE  {symbol:<15} "
-        f"LTP ₹{row['LTP']:<10.2f} "
+        f"LTP Rs.{row['LTP']:<10.2f} "
         f"BID {row['BidQty']:<12.0f} "
         f"ASK {row['AskQty']:<12.0f}"
     )

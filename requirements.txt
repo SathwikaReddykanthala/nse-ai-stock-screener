@@ -1,5 +1,8 @@
 streamlit
 pandas
+numpy
+scikit-learn
+joblib
 streamlit-autorefresh
 smartapi-python
 pyotp
