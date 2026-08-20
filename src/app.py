@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
+import os
+from supabase import create_client
 
 # ============================================================
 # OPTIONAL AUTO REFRESH
@@ -40,6 +42,19 @@ LIVE_FEATURES = DATASET / "live_ml_features.csv"
 LIVE_SMMA = DATASET / "live_smma.csv"
 LIVE_AI = DATASET / "live_ai_signals.csv"
 TRADE_LOG = DATASET / "live_trade_log.csv"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+supabase = None
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        )
+    except Exception:
+        supabase = None
 
 IST = ZoneInfo("Asia/Kolkata")
 MARKET_OPEN = dt_time(9, 15)
@@ -1430,7 +1445,22 @@ def etq_for_symbol(symbol, live):
 # LOAD STOCKAI PIPELINE FILES
 # ============================================================
 
-ai_df = read_csv(LIVE_AI)
+# Load AI signals from Supabase when available.
+if supabase is not None:
+    try:
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        ai_df = pd.DataFrame(response.data)
+
+    except Exception:
+        ai_df = read_csv(LIVE_AI)
+else:
+    ai_df = read_csv(LIVE_AI)
 smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
