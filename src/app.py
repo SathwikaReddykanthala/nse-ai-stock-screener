@@ -1492,6 +1492,19 @@ if supabase is not None:
 
         ai_df = pd.DataFrame(response.data)
 
+        st.info(
+            f"Supabase connected. Rows received: {len(ai_df)}"
+        )
+
+    except Exception as e:
+        st.error(
+            f"Supabase read failed: {e}"
+        )
+else:
+    st.error(
+        "Supabase client was not created. "
+        "Check SUPABASE_URL and SUPABASE_ANON_KEY in Streamlit Secrets."
+    )
     except Exception as e:
         st.warning(
             f"Unable to load live signals from Supabase: {e}"
