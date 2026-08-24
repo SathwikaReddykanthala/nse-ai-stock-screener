@@ -1622,6 +1622,9 @@ scanned["DepthTotal"] = scanned["BidQty"] + scanned["AskQty"]
 scanned["PASS"] = (
     scanned["DepthTotal"] >= 100_000
 )
+if "Symbol" not in scanned.columns:
+    scanned["Symbol"] = ""
+
 passed = (
     scanned[scanned["PASS"]]
     .sort_values(
@@ -1681,9 +1684,31 @@ def etq_values(symbol, row=None):
             e60 = get_value(row, "ETQ_60min", "ETQ60", default=0)
     return e5, e20, e60
 
-total_5 = sum(ETQ5.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_20 = sum(ETQ20.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_60 = sum(ETQ60.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+# ============================================================
+# SAFE ETQ TOTALS
+# ============================================================
+
+if "Symbol" in passed.columns and not passed.empty:
+    passed_symbols = passed["Symbol"].astype(str)
+
+    total_5 = sum(
+        ETQ5.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_20 = sum(
+        ETQ20.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_60 = sum(
+        ETQ60.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+else:
+    total_5 = 0
+    total_20 = 0
+    total_60 = 0
 
 # ============================================================
 # AI SIGNAL ENGINE
