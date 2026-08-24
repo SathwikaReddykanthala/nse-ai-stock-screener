@@ -1420,30 +1420,47 @@ def etq_for_symbol(symbol, live):
 # This prevents NameError when a file is missing or when the
 # deployment is running an older/cached version of the app.
 
+# ============================================================
+# LOAD STOCKAI PIPELINE FILES - SAFE
+# ============================================================
+
+# Initialize FIRST so variables can NEVER be undefined
 ai_df = pd.DataFrame()
 smma_df = pd.DataFrame()
 features_df = pd.DataFrame()
 live = pd.DataFrame()
 
+# AI signals: Supabase is handled separately.
+# Local CSV is fallback.
 try:
-    ai_df = read_csv(LIVE_AI)
+    ai_df = load_ai_signals_from_supabase()
 except Exception:
     ai_df = pd.DataFrame()
 
+if ai_df.empty:
+    try:
+        ai_df = read_csv(LIVE_AI)
+    except Exception:
+        ai_df = pd.DataFrame()
+
+# SMMA
 try:
     smma_df = read_csv(LIVE_SMMA)
 except Exception:
     smma_df = pd.DataFrame()
 
+# ML features
 try:
     features_df = read_csv(LIVE_FEATURES)
 except Exception:
     features_df = pd.DataFrame()
 
+# Live ticks
 try:
     live = read_csv(LIVE_TICKS)
 except Exception:
     live = pd.DataFrame()
+
 
 # ============================================================
 # LIVE DATA STATUS
@@ -1451,26 +1468,19 @@ except Exception:
 
 if ai_df.empty:
     st.warning(
-        "Live AI signals are not currently available. "
-        "The live signal engine must be running to generate "
-        "real-time signals."
+        "No AI signal data is available from "
+        "Supabase or the local CSV."
     )
-
-    ai_df = pd.DataFrame()
 
 if smma_df.empty:
     st.warning(
         "Live SMMA data is not currently available."
     )
 
-    smma_df = pd.DataFrame()
-
 if features_df.empty:
     st.warning(
         "Live ML features are not currently available."
     )
-
-    features_df = pd.DataFrame()
 
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
