@@ -1586,7 +1586,26 @@ else:
 # ============================================================
 # NORMALIZE
 # ============================================================
-df["LTP"] = pd.to_numeric(df["LTP"], errors="coerce")
+# ============================================================
+# SAFE LTP NORMALIZATION
+# ============================================================
+
+if "Current_LTP" in df.columns:
+    df["LTP"] = pd.to_numeric(
+        df["Current_LTP"],
+        errors="coerce"
+    )
+elif "LTP" in df.columns:
+    df["LTP"] = pd.to_numeric(
+        df["LTP"],
+        errors="coerce"
+    )
+else:
+    df["LTP"] = 0.0
+
+df["LTP"] = df["LTP"].fillna(0)
+
+# ============================================================
 if "BidQty" not in df.columns:
     df["BidQty"] = 0.0
 if "AskQty" not in df.columns:
