@@ -1,7 +1,6 @@
+from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
-from pathlib import Path
-import os
 import html
 import math
 import textwrap
@@ -10,17 +9,6 @@ from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 
-try:
-    from supabase import create_client, Client
-except Exception:
-    create_client = None
-    Client = None
-
-try:
-    from dotenv import load_dotenv
-except Exception:
-    load_dotenv = None
-
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -28,57 +16,7 @@ try:
     from streamlit_autorefresh import st_autorefresh
 except Exception:
     st_autorefresh = None
-# ============================================================
-# SUPABASE CONNECTION
-# ============================================================
-from supabase import create_client, Client
 
-supabase: Client | None = None
-supabase_error = None
-
-try:
-    # Streamlit Cloud
-    if hasattr(st, "secrets"):
-        SUPABASE_URL = str(
-            st.secrets.get("SUPABASE_URL", "")
-        ).strip()
-
-        SUPABASE_ANON_KEY = str(
-            st.secrets.get("SUPABASE_ANON_KEY", "")
-        ).strip()
-    else:
-        SUPABASE_URL = ""
-        SUPABASE_ANON_KEY = ""
-
-    # Local fallback
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
-        from dotenv import load_dotenv
-        load_dotenv()
-
-        SUPABASE_URL = os.getenv(
-            "SUPABASE_URL",
-            SUPABASE_URL
-        ).strip()
-
-        SUPABASE_ANON_KEY = os.getenv(
-            "SUPABASE_ANON_KEY",
-            SUPABASE_ANON_KEY
-        ).strip()
-
-    if not SUPABASE_URL:
-        raise RuntimeError("SUPABASE_URL is empty")
-
-    if not SUPABASE_ANON_KEY:
-        raise RuntimeError("SUPABASE_ANON_KEY is empty")
-
-    supabase = create_client(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-    )
-
-except Exception as e:
-    supabase = None
-    supabase_error = str(e)
 
 # ============================================================
 # PAGE
@@ -89,81 +27,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-# ============================================================
-# SUPABASE CONNECTION
-# ============================================================
 
-supabase = None
-supabase_error = None
-
-try:
-
-    SUPABASE_URL = ""
-    SUPABASE_ANON_KEY = ""
-
-    # Streamlit Cloud
-    try:
-        SUPABASE_URL = str(
-            st.secrets.get("SUPABASE_URL", "")
-        ).strip()
-
-        SUPABASE_ANON_KEY = str(
-            st.secrets.get("SUPABASE_ANON_KEY", "")
-        ).strip()
-
-    except Exception:
-        pass
-
-    # Local .env fallback
-    if (
-        not SUPABASE_URL
-        or not SUPABASE_ANON_KEY
-    ):
-
-        if load_dotenv is not None:
-            load_dotenv()
-
-        SUPABASE_URL = os.getenv(
-            "SUPABASE_URL",
-            SUPABASE_URL
-        ).strip()
-
-        SUPABASE_ANON_KEY = os.getenv(
-            "SUPABASE_ANON_KEY",
-            SUPABASE_ANON_KEY
-        ).strip()
-
-    if create_client is None:
-        raise RuntimeError(
-            "supabase package is not installed"
-        )
-
-    if not SUPABASE_URL:
-        raise RuntimeError(
-            "SUPABASE_URL is empty"
-        )
-
-    if not SUPABASE_ANON_KEY:
-        raise RuntimeError(
-            "SUPABASE_ANON_KEY is empty"
-        )
-
-    supabase = create_client(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-    )
-
-except Exception as e:
-
-    supabase = None
-    supabase_error = str(e)
-
-st.write("SUPABASE_URL present:", bool(SUPABASE_URL))
-st.write("SUPABASE_ANON_KEY present:", bool(SUPABASE_ANON_KEY))
-st.write("SUPABASE client created:", supabase is not None)
-
-if supabase_error:
-    st.error(f"Supabase error: {supabase_error}")
 # ============================================================
 # PATHS
 # ============================================================
@@ -1544,92 +1408,43 @@ def etq_for_symbol(symbol, live):
         ].sum()
     }
 
-# ============================================================
-# LOAD AI SIGNALS FROM SUPABASE
-# ============================================================
 
-def load_ai_signals_from_supabase():
-    if supabase is None:
-        return pd.DataFrame()
-
-    try:
-        response = (
-            supabase
-            .table("live_ai_signals")
-            .select("*")
-            .limit(5000)
-            .execute()
-        )
-
-        if response.data:
-            return pd.DataFrame(response.data)
-
-    except Exception as e:
-        print("Supabase live_ai_signals error:", e)
-
-    return pd.DataFrame()
 
 # ============================================================
 # LOAD DATA
 # ============================================================
 # ============================================================
-# LOAD DATA
+# LOAD STOCKAI PIPELINE FILES - SAFE INITIALIZATION
 # ============================================================
+# Initialize every dataframe BEFORE any status checks.
+# This prevents NameError when a file is missing or when the
+# deployment is running an older/cached version of the app.
 
-# ------------------------------------------------------------
-# AI SIGNALS
-# Supabase is the primary source on Streamlit Cloud.
-# Local CSV is only a fallback.
-# ------------------------------------------------------------
+ai_df = pd.DataFrame()
+smma_df = pd.DataFrame()
+features_df = pd.DataFrame()
+live = pd.DataFrame()
 
-ai_df = load_ai_signals_from_supabase()
-
-if ai_df.empty:
+try:
     ai_df = read_csv(LIVE_AI)
+except Exception:
+    ai_df = pd.DataFrame()
 
-
-# ------------------------------------------------------------
-# OTHER PIPELINE DATA
-# Always initialize these variables.
-# ------------------------------------------------------------
-
-smma_df = read_csv(LIVE_SMMA)
-features_df = read_csv(LIVE_FEATURES)
-live = read_csv(LIVE_TICKS)
-
-
-# ------------------------------------------------------------
-# SAFE EMPTY FALLBACKS
-# ------------------------------------------------------------
-
-if smma_df is None:
+try:
+    smma_df = read_csv(LIVE_SMMA)
+except Exception:
     smma_df = pd.DataFrame()
 
-if features_df is None:
+try:
+    features_df = read_csv(LIVE_FEATURES)
+except Exception:
     features_df = pd.DataFrame()
 
-if live is None:
+try:
+    live = read_csv(LIVE_TICKS)
+except Exception:
     live = pd.DataFrame()
 
-
-# ============================================================
-# LIVE DATA STATUS
-# ============================================================
-
-if ai_df.empty:
-    st.warning(
-        "Live AI signals are not currently available."
-    )
-
-if smma_df.empty:
-    st.warning(
-        "Live SMMA data is not currently available."
-    )
-
-if features_df.empty:
-    st.warning(
-        "Live ML features are not currently available."
-    )
 # ============================================================
 # LIVE DATA STATUS
 # ============================================================
