@@ -1508,27 +1508,23 @@ else:
 # SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
 # ============================================================
 
+# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = (
-        df["Signal"]
-        .fillna("NONE")
-        .astype(str)
-        .str.upper()
-        .str.strip()
-    )
+    df["Signal"] = pd.Series(
+        df["Signal"],
+        index=df.index
+    ).fillna("NONE").astype(str).str.upper().str.strip()
 
+# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = (
-        df["Decision"]
-        .fillna("AVOID")
-        .astype(str)
-        .str.upper()
-        .str.strip()
-    )
+    df["Decision"] = pd.Series(
+        df["Decision"],
+        index=df.index
+    ).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
