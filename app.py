@@ -1471,7 +1471,15 @@ if ai_df.empty:
         "No AI signal data is available from "
         "Supabase or the local CSV."
     )
+# SAFETY INITIALIZATION
+if "smma_df" not in globals() or smma_df is None:
+    smma_df = pd.DataFrame()
 
+if "features_df" not in globals() or features_df is None:
+    features_df = pd.DataFrame()
+
+if "live" not in globals() or live is None:
+    live = pd.DataFrame()
 if smma_df.empty:
     st.warning(
         "Live SMMA data is not currently available."
