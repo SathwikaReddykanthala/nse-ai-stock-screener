@@ -1988,7 +1988,22 @@ live_top_header()
 # ============================================================
 # NAV
 # ============================================================
+# ============================================================
+# NAV
+# ============================================================
 
+page = st.radio(
+    "Dashboard sections",
+    [
+        "Live Dashboard",
+        "AI Signal Analysis",
+        "Trade Log",
+        "Stock Detail"
+    ],
+    horizontal=True,
+    label_visibility="collapsed",
+    key="dashboard_page"
+)
 # ============================================================
 # LIVE DASHBOARD
 # ============================================================
@@ -3187,7 +3202,21 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
 
 
 # ============================================================
-# ONLY LIVE DASHBOARD
+# PAGE ROUTING
 # ============================================================
 
-live_dashboard_fragment()
+if page == "Live Dashboard":
+
+    live_dashboard_fragment()
+
+elif page == "AI Signal Analysis":
+
+    render_ai_analysis()
+
+elif page == "Trade Log":
+
+    render_trade_log()
+
+else:
+
+    render_stock_detail()
