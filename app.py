@@ -1466,12 +1466,14 @@ except Exception:
 # LIVE DATA STATUS
 # ============================================================
 
-if ai_df.empty:
-    st.warning(
-        "No AI signal data is available from "
-        "Supabase or the local CSV."
-    )
-# SAFETY INITIALIZATION
+# ============================================================
+# SAFE DATA INITIALIZATION
+# ============================================================
+
+# These MUST be created before any .empty check.
+if "ai_df" not in globals() or ai_df is None:
+    ai_df = pd.DataFrame()
+
 if "smma_df" not in globals() or smma_df is None:
     smma_df = pd.DataFrame()
 
@@ -1480,6 +1482,19 @@ if "features_df" not in globals() or features_df is None:
 
 if "live" not in globals() or live is None:
     live = pd.DataFrame()
+
+
+# ============================================================
+# LIVE DATA STATUS
+# ============================================================
+
+if ai_df.empty:
+    st.warning(
+        "Live AI signals are not currently available. "
+        "The live signal engine must be running to generate "
+        "real-time signals."
+    )
+
 if smma_df.empty:
     st.warning(
         "Live SMMA data is not currently available."
@@ -1489,7 +1504,6 @@ if features_df.empty:
     st.warning(
         "Live ML features are not currently available."
     )
-
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
 # ============================================================
