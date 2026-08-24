@@ -975,7 +975,7 @@ def get_text(row, *names, default=""):
     return str(value)
 
 def money(value):
-    return f"â‚¹{to_num(value):,.2f}"
+    return f"₹{to_num(value):,.2f}"
 
 
 def qty_format(value):
@@ -1954,9 +1954,9 @@ TRADE_LOG = update_trade_log(AI_ALL)
 def live_top_header():
     header_now = datetime.now(IST)
     header_status = (
-        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
+        '<span class="status-live blink">● LIVE · 2 SEC</span>'
         if market_is_open(header_now)
-        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
+        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
     )
 
     render_html(f"""
@@ -2741,7 +2741,7 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
                 return to_num(ai[name], default)
         return default
 
-    def atext(names, default="â€”"):
+    def atext(names, default="—"):
         for name in names:
             if name in ai and pd.notna(ai[name]):
                 return str(ai[name])
@@ -2800,14 +2800,14 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
     return f"""
     <details class="stock-inline-details">
         <summary>
-            <span class="stock-arrow">â–¶</span>
+            <span class="stock-arrow">▶</span>
             <span class="symbol">{html.escape(symbol)}</span>
         </summary>
 
         <div class="inline-stock-panel">
             <div class="inline-stock-top">
                 <div>
-                    <div class="inline-stock-title">{html.escape(symbol)} Â· LIVE ANALYSIS</div>
+                    <div class="inline-stock-title">{html.escape(symbol)} · LIVE ANALYSIS</div>
                     <div class="inline-stock-sub">Live values update every 2 seconds; changed values blink.</div>
                 </div>
                 <div class="inline-stock-price">{money(ltp)}</div>
@@ -2858,7 +2858,7 @@ def render_ai_analysis():
     avg_conf = float(AI_ALL["Confidence"].mean()) if not AI_ALL.empty else 0
 
     c1,c2,c3,c4 = st.columns(4)
-    stats=[("AI STOCKS",len(AI_ALL),"every â‚¹30â€“â‚¹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
+    stats=[("AI STOCKS",len(AI_ALL),"every ₹30–₹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
     for col,(lab,val,sub) in zip([c1,c2,c3,c4],stats):
         with col:
             render_html(f'<div class="ai-card"><div class="ai-label">{lab}</div><div class="ai-value">{val}</div><div class="ai-sub">{sub}</div></div>')
@@ -2866,7 +2866,7 @@ def render_ai_analysis():
     st.caption("AI analysis is generated locally from SMMA crossover, LTP trend history, market depth and ETQ. It is a paper-analysis signal, not an order sent to Angel One.")
 
     if AI_ALL.empty:
-        st.info("No â‚¹30â€“â‚¹500 stocks available for AI analysis.")
+        st.info("No ₹30–₹500 stocks available for AI analysis.")
         return
 
     search = st.text_input("Search AI stock", placeholder="RELIANCE, TCS, INFY...", key="ai_search")
@@ -2919,7 +2919,7 @@ def render_ai_analysis():
 # TRADE LOG - EVERY STOCK, PAPER ONLY
 # ============================================================
 def render_trade_log():
-    st.caption("Paper trade log only â€” this dashboard does not place real Angel One orders.")
+    st.caption("Paper trade log only — this dashboard does not place real Angel One orders.")
 
     if TRADE_LOG.empty:
         st.info("No stock records available.")
@@ -3007,7 +3007,7 @@ def render_stock_detail():
 <div class="detail-metric">ETQ 5M: <b>{qty_format(r['ETQ 5M'])}</b></div>
 <div class="detail-metric">ETQ 20M: <b>{qty_format(r['ETQ 20M'])}</b></div>
 <div class="detail-metric">ETQ 60M: <b>{qty_format(r['ETQ 60M'])}</b></div>
-<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> Â· Stop: <b>{money(r['Stop Loss'])}</b> Â· Target: <b>{money(r['Target'])}</b></div>
+<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> · Stop: <b>{money(r['Stop Loss'])}</b> · Target: <b>{money(r['Target'])}</b></div>
 <div class="detail-metric">AI Reason: {html.escape(r['Reason'])}</div>
 </div>
 """)
@@ -3147,12 +3147,12 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
                 Confidence: <b>{confidence:.0f}%</b><br>
                 Score: <b>{score:.0f}/100</b><br>
                 Trend: <b>{trend_pct:+.2f}%</b><br>
-                Reason: {html.escape(str(ai.get("Reason", "â€”")))}
+                Reason: {html.escape(str(ai.get("Reason", "—")))}
             </div>
         </div>
 
         <div class="workspace-card">
-            <div class="workspace-label">TRADE LOG Â· PAPER</div>
+            <div class="workspace-label">TRADE LOG · PAPER</div>
             <div class="workspace-title">{html.escape(selected)}</div>
             {
                 (
@@ -3192,7 +3192,7 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
         )
         render_html(f"""
         <div class="detail-box" style="margin-top:12px;">
-            <div class="detail-title">{html.escape(selected)} Â· LIVE LTP TREND</div>
+            <div class="detail-title">{html.escape(selected)} · LIVE LTP TREND</div>
             <div class="detail-sub">Latest real LTP ticks</div>
             {sparkline(vals, graph_color)}
         </div>
@@ -3212,5 +3212,4 @@ elif page == "Trade Log":
     render_trade_log()
 else:
     render_stock_detail()
-
 
