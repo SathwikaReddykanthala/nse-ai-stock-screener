@@ -23,7 +23,7 @@ except Exception:
 # ============================================================
 st.set_page_config(
     page_title="NSE Stock Screener",
-    page_icon="ðŸ“Š",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -85,10 +85,28 @@ def render_html(content):
 st.markdown(
     """
 <style>
-html, body, [data-testid="stAppViewContainer"],
-[data-testid="stApp"], [data-testid="stMain"] {
-    background:#020617 !important;
-    color:#e8eefb !important;
+html,
+body,
+[data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+[data-testid="stHeader"],
+button,
+input,
+textarea,
+select,
+div,
+span,
+p,
+label,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "Segoe UI", Arial, sans-serif !important;
 }
 
 header[data-testid="stHeader"] {
@@ -2297,32 +2315,32 @@ def render_live_dashboard():
 
     kpis = [
         (
-            "ã€½ SCANNING",
+            "〽 SCANNING",
             f"{scanning_count:,}",
-            "â‚¹30â€“â‚¹500 stocks"
+            "₹30–₹500 stocks"
         ),
         (
-            "â–½ PASS SCREEN",
+            "▽ PASS SCREEN",
             f"{len(passed):,}",
             "Bid + Ask > 1L"
         ),
         (
-            "â†— ETQ 5M",
+            "↗ ETQ 5M",
             qty_format(total_5),
             "qualified stocks"
         ),
         (
-            "â†— ETQ 20M",
+            "↗  ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "â†— ETQ 60M",
+            "↗  ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
-            "â—‰ MARKET",
+            "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
             "09:15â€“15:30 IST"
         )
