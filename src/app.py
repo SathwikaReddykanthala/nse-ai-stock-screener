@@ -1834,6 +1834,15 @@ def ai_signal_for_row(row):
         "Class": cls,
     }
 
+def build_ai_analysis(scanned):
+    if scanned is None or scanned.empty:
+        return pd.DataFrame(
+            columns=[
+                "Symbol",
+                "Signal",
+                "Decision",
+            ]
+        )
 
 def build_ai_analysis(source_df):
     rows = []
@@ -1842,8 +1851,33 @@ def build_ai_analysis(source_df):
     return pd.DataFrame(rows)
 
 
+# ============================================================
+# SAFE AI ANALYSIS / PASSED FILTER
+# ============================================================
+
 AI_ALL = build_ai_analysis(scanned)
-AI_PASSED = AI_ALL[AI_ALL["Symbol"].isin(passed["Symbol"].map(clean_symbol))].copy()
+
+if not isinstance(AI_ALL, pd.DataFrame):
+    AI_ALL = pd.DataFrame()
+
+if "Symbol" not in AI_ALL.columns:
+    AI_ALL["Symbol"] = pd.Series(dtype=str)
+
+if "Symbol" not in passed.columns:
+    passed["Symbol"] = pd.Series(dtype=str)
+
+passed_symbols = (
+    passed["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+)
+
+AI_PASSED = AI_ALL[
+    AI_ALL["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+    .isin(passed_symbols)
+].copy()
 
 # ============================================================
 # PAPER TRADE LOG - ONE CURRENT RECORD PER STOCK
