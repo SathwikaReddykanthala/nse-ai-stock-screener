@@ -1191,19 +1191,6 @@ def load_history(live):
         errors="coerce"
     )
 
-    if "Current_LTP" in df.columns:
-            df["LTP"] = pd.to_numeric(
-                df["Current_LTP"],
-                errors="coerce"
-            )
-    else:
-            df["LTP"] = 0.0
-
-    df["LTP"] = pd.to_numeric(
-        df["LTP"],
-        errors="coerce"
-    ).fillna(0)
-
     x = x.dropna(
         subset=[
             "Symbol",
@@ -1435,19 +1422,32 @@ smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
 
+# ============================================================
+# LIVE DATA STATUS
+# ============================================================
+
 if ai_df.empty:
+    st.warning(
+        "Live AI signals are not currently available. "
+        "The live signal engine must be running to generate "
+        "real-time signals."
+    )
+
     ai_df = pd.DataFrame()
-        
 
 if smma_df.empty:
     st.warning(
-        "live_smma.csv is empty or missing."
+        "Live SMMA data is not currently available."
     )
+
+    smma_df = pd.DataFrame()
 
 if features_df.empty:
     st.warning(
-        "live_ml_features.csv is empty or missing."
+        "Live ML features are not currently available."
     )
+
+    features_df = pd.DataFrame()
 
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
@@ -1461,10 +1461,14 @@ df.columns = [
 ]
 
 if "Symbol" not in df.columns:
-    st.error(
-        "live_ai_signals.csv does not contain Symbol."
+    # Keep the dashboard alive when the live engine has not produced
+    # a CSV yet (for example on Streamlit Cloud outside market hours).
+    df = pd.DataFrame(
+        columns=[
+            "Symbol", "Current_LTP", "LTP",
+            "Signal", "Decision", "BidQty", "AskQty"
+        ]
     )
-    st.stop()
 
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
@@ -1490,19 +1494,26 @@ df["Decision"] = (
     .astype(str)
     .str.upper()
 )
+
 total_stocks = len(df)
 
 price_screened = int(
     df.get(
         "Price_Filter",
-        pd.Series(False, index=df.index)
+        pd.Series(
+            False,
+            index=df.index
+        )
     ).sum()
 )
 
 liquidity_qualified = int(
     df.get(
         "Liquidity_Filter",
-        pd.Series(False, index=df.index)
+        pd.Series(
+            False,
+            index=df.index
+        )
     ).sum()
 )
 
@@ -1521,22 +1532,41 @@ accept_count = int(
 avoid_count = int(
     (df["Decision"] == "AVOID").sum()
 )
+
 # ============================================================
 # APPLY LIVE DATA / FREEZE OUTSIDE MARKET HOURS
 # ============================================================
+
 base = ai_df.copy()
 
 if IS_MARKET_OPEN:
-    df = base.copy()
-    st.session_state["last_market_snapshot"] = df.copy()
-else:
-    frozen = st.session_state.get("last_market_snapshot")
 
-    if frozen is not None and not frozen.empty:
+    df = base.copy()
+
+    st.session_state[
+        "last_market_snapshot"
+    ] = df.copy()
+
+else:
+
+    frozen = st.session_state.get(
+        "last_market_snapshot"
+    )
+
+    if (
+        frozen is not None
+        and not frozen.empty
+    ):
         df = frozen.copy()
     else:
         df = base.copy()
+
+# ============================================================
+# APPLY LIVE QUOTES
+# ============================================================
+
 if IS_MARKET_OPEN and not live.empty:
+
     df = apply_live(
         df,
         live
