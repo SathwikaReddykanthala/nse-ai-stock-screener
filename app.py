@@ -1546,9 +1546,24 @@ else:
 # SAFE SIGNAL / DECISION NORMALIZATION
 # ============================================================
 
+# ============================================================
+# SIGNAL / DECISION NORMALIZATION
+# ============================================================
+
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
+    df["Signal"] = df["Signal"].fillna("NONE")
+
+df["Signal"] = df["Signal"].astype(str).str.upper().str.strip()
+
+
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = df["Decision"].fillna("AVOID")
+
+df["Decision"] = df["Decision"].astype(str).str.upper().str.strip()
     # ============================================================
 # SAFE SIGNAL / DECISION NORMALIZATION
 # ============================================================
