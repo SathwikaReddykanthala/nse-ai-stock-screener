@@ -7,7 +7,24 @@ import textwrap
 from urllib.parse import quote
 import pandas as pd
 import streamlit as st
+from supabase import create_client
+# ============================================================
+# SUPABASE
+# ============================================================
 
+supabase = None
+
+try:
+    supabase_url = st.secrets["SUPABASE_URL"]
+    supabase_key = st.secrets["SUPABASE_KEY"]
+
+    supabase = create_client(
+        supabase_url,
+        supabase_key
+    )
+
+except Exception as e:
+    supabase = None
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -16,20 +33,7 @@ try:
 except Exception:
     st_autorefresh = None
 
-try:
-    from supabase import create_client
-    import os
 
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    else:
-        supabase = None
-
-except Exception:
-    supabase = None
 # ============================================================
 # PAGE
 # ============================================================
@@ -1749,7 +1753,25 @@ for column in numeric_columns:
             errors="coerce"
         )
 
+# ============================================================
+# REMOVE DUPLICATE AI COLUMN NAMES
+# ============================================================
 
+if ai_df.columns.duplicated().any():
+
+    duplicate_columns = ai_df.columns[
+        ai_df.columns.duplicated()
+    ].tolist()
+
+    print(
+        "Duplicate AI columns found:",
+        duplicate_columns
+    )
+
+    ai_df = ai_df.loc[
+        :,
+        ~ai_df.columns.duplicated(keep="first")
+    ].copy()
 # ============================================================
 # KEEP AI DATA AVAILABLE TO THE DASHBOARD
 # ============================================================
