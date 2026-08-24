@@ -101,6 +101,77 @@ def render_html(content):
 st.markdown(
     """
 <style>
+/* ============================================================
+       TOTAL BLACK BACKGROUND
+       ============================================================ */
+
+    html,
+    body,
+    [data-testid="stApp"],
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"] {
+        background-color: #000000 !important;
+        background: #000000 !important;
+    }
+
+    /* Main content */
+    .main,
+    section.main,
+    div[data-testid="stAppViewContainer"] > .main {
+        background-color: #000000 !important;
+        background: #000000 !important;
+    }
+
+    /* Main block */
+    div[data-testid="stMainBlockContainer"] {
+        background-color: #000000 !important;
+    }
+
+    /* Header */
+    header[data-testid="stHeader"] {
+        background-color: #000000 !important;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #000000 !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background-color: #000000 !important;
+    }
+
+    /* All Streamlit containers */
+    div[data-testid="stVerticalBlock"],
+    div[data-testid="stHorizontalBlock"],
+    div[data-testid="stColumn"],
+    div[data-testid="stExpander"] {
+        background-color: transparent !important;
+    }
+
+    /* Remove white gaps */
+    .block-container {
+        background-color: #000000 !important;
+    }
+
+    /* Text */
+    body,
+    p,
+    span,
+    label,
+    div,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        background-color: transparent;
+    }
 html,
 body,
 [data-testid="stApp"],
