@@ -1593,6 +1593,15 @@ smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
 
+if smma_df.empty:
+    smma_df = pd.DataFrame()
+
+if features_df.empty:
+    features_df = pd.DataFrame()
+
+if live.empty:
+    live = pd.DataFrame()
+
 # ============================================================
 # LIVE DATA STATUS
 # ============================================================
