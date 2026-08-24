@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 import html
@@ -1490,7 +1490,28 @@ except Exception:
 # SUPABASE AI SIGNALS
 # ============================================================
 
+# ============================================================
+# SUPABASE AI SIGNALS
+# ============================================================
+
+supabase = None
 supabase_ai_df = pd.DataFrame()
+
+try:
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+    SUPABASE_KEY = st.secrets.get("SUPABASE_SERVICE_KEY", "")
+
+    if SUPABASE_URL and SUPABASE_KEY:
+        from supabase import create_client
+
+        supabase = create_client(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        )
+
+except Exception:
+    supabase = None
+
 
 if supabase is not None:
 
@@ -1510,8 +1531,6 @@ if supabase is not None:
 
     except Exception:
         supabase_ai_df = pd.DataFrame()
-
-
 # ============================================================
 # SELECT AI SOURCE
 # ============================================================
