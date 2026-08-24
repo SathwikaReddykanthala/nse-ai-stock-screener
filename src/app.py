@@ -5,9 +5,11 @@ import html
 import math
 import textwrap
 from urllib.parse import quote
+
 import pandas as pd
 import streamlit as st
-
+import os
+from supabase import create_client
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -21,8 +23,8 @@ except Exception:
 # PAGE
 # ============================================================
 st.set_page_config(
-    page_title="NSE Stock Screener",
-    page_icon="📊",
+    page_title="StockAI — NSE AI Stock Screener",
+    page_icon="ðŸ“Š",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -44,6 +46,53 @@ IST = ZoneInfo("Asia/Kolkata")
 MARKET_OPEN = dt_time(9, 15)
 MARKET_CLOSE = dt_time(15, 30)
 
+
+# ============================================================
+# SUPABASE LIVE DATA
+# ============================================================
+
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+
+supabase = None
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        )
+    except Exception:
+        supabase = None
+
+
+# ============================================================
+# LOAD LIVE AI SIGNALS FROM SUPABASE
+# ============================================================
+
+def load_supabase_ai_signals():
+    if supabase is None:
+        return pd.DataFrame()
+
+    try:
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        rows = response.data or []
+
+        if not rows:
+            return pd.DataFrame()
+
+        return pd.DataFrame(rows)
+
+    except Exception as e:
+        st.warning(f"Supabase live signal read failed: {e}")
+        return pd.DataFrame()
+    
 # ============================================================
 # MARKET STATUS
 # ============================================================
@@ -84,828 +133,1148 @@ def render_html(content):
 st.markdown(
     """
 <style>
+
+/* ============================================================
+   STOCKAI — PREMIUM BLACK TERMINAL THEME
+   ============================================================ */
+
+:root {
+    --bg: #000000;
+    --panel: #070707;
+    --panel-2: #0b0b0b;
+    --panel-3: #101010;
+    --border: #242424;
+    --border-soft: #181818;
+    --text: #f5f7fa;
+    --text-2: #c4cad3;
+    --muted: #7d8794;
+    --green: #19e6a5;
+    --green-soft: #06251d;
+    --red: #ff5964;
+    --red-soft: #2b0b10;
+    --blue: #5b8cff;
+    --blue-soft: #0b1730;
+    --yellow: #f5c84c;
+}
+
+/* ---------- GLOBAL ---------- */
+
 html,
 body,
+.stApp,
 [data-testid="stApp"],
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"],
 [data-testid="stHeader"],
-button,
-input,
-textarea,
-select,
-div,
-span,
-p,
-label,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: "Segoe UI", Arial, sans-serif !important;
+[data-testid="stDecoration"],
+.main,
+section.main,
+.block-container,
+footer {
+    background: #000000 !important;
+    background-color: #000000 !important;
+    color: var(--text) !important;
 }
 
-header[data-testid="stHeader"] {
-    background:#000000 !important;
+html,
+body,
+.stApp {
+    font-family:
+        Inter,
+        ui-sans-serif,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif !important;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+::selection {
+    background: #173f35 !important;
+    color: #ffffff !important;
 }
 
 .block-container {
-    max-width:100% !important;
-    width:100% !important;
-    padding:18px 12px 40px !important;
-    margin:0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 18px 14px 42px !important;
+    margin: 0 !important;
 }
 
 [data-testid="stAppViewContainer"] > .main {
-    padding-top:0px !important;
+    padding-top: 0 !important;
+    background: #000000 !important;
 }
 
 [data-testid="stMainBlockContainer"] {
-    padding-top:20px !important;
+    padding-top: 10px !important;
+    background: #000000 !important;
 }
 
 section[data-testid="stSidebar"] {
-    display:none !important;
+    display: none !important;
+}
+
+[data-testid="stHeader"] {
+    background: #000000 !important;
+    height: 0 !important;
+}
+
+[data-testid="stToolbar"] {
+    display: none !important;
 }
 
 div[data-testid="stHorizontalBlock"] {
-    gap:8px !important;
+    gap: 10px !important;
 }
 
 div[data-testid="stVerticalBlock"] {
-    gap:6px !important;
+    gap: 7px !important;
 }
 
-/* ---------- TOP ---------- */
+/* ---------- TOP BAR ---------- */
 
 .topbar {
-    width:100%;
-    min-height:76px;
-    box-sizing:border-box;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:14px 18px;
-    margin:25px 0 14px 0;
-    border-bottom:1px solid #17233a;
-    background:#000000;
-    color:#eef4ff;
-    position:relative;
-    z-index:100;
-    transform:none;
-    opacity:1;
-    visibility:visible;
+    width: 100%;
+    min-height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    margin: 4px 0 16px;
+    background: #000000;
+    border: 1px solid #171717;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.45);
+    color: var(--text);
+    position: relative;
+    z-index: 100;
 }
 
 .brand {
-    display:flex;
-    align-items:center;
-    gap:10px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
 }
 
 .logo {
-    width:42px;
-    height:42px;
-    border-radius:10px;
-    background:#000000;
-    color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:22px;
-    font-weight:900;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #19e6a5, #087c62);
+    color: #00130e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 21px;
+    font-weight: 950;
+    box-shadow: 0 0 25px rgba(25,230,165,.18);
 }
 
 .brand-title {
-    color:#eef4ff;
-    font-size:19px;
-    font-weight:800;
-    line-height:21px;
+    color: #ffffff !important;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -.35px;
+    line-height: 23px;
 }
 
 .brand-sub {
-    color:#657592;
-    font-size:10px;
+    color: #697382 !important;
+    font-size: 10px;
+    margin-top: 2px;
+    letter-spacing: .04em;
 }
 
 .clock {
-    color:#70819e;
-    font-family:monospace;
-    font-size:12px;
-    position:relative;
-    top:0;
-    display:inline-block;
+    color: #8c97a6 !important;
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace !important;
+    font-size: 12px;
+    letter-spacing: .04em;
 }
 
 .status-live,
 .status-closed {
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    margin-left:10px;
-    padding:7px 12px;
-    border-radius:9px;
-    font-size:11px;
-    font-weight:800;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-left: 12px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .06em;
 }
 
 .status-live {
-    color:#20dbaa;
-    background:#000000;
-    border:1px solid #0b725e;
+    color: var(--green);
+    background: var(--green-soft);
+    border: 1px solid #0e735b;
+    box-shadow: 0 0 18px rgba(25,230,165,.08);
 }
 
 .status-closed {
-    color:#ff6971;
-    background:#000000;
-    border:1px solid #7c2637;
+    color: #ff6d76;
+    background: var(--red-soft);
+    border: 1px solid #7d2637;
 }
 
 .blink {
-    animation:liveblink 1s infinite;
+    animation: liveblink 1s infinite;
 }
 
 .live-dot {
-    display:inline-block;
-    width:8px;
-    height:8px;
-    margin-right:7px;
-    border-radius:50%;
-    background:#20dbaa;
-    vertical-align:middle;
-    animation:livepulse 1.2s infinite;
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    vertical-align: middle;
+    animation: livepulse 1.2s infinite;
 }
 
 .live-value {
-    transition:all .15s ease;
+    transition: all .15s ease;
 }
 
 .value-flash {
-    animation:valueflash .65s ease-out;
-    background:transparent !important;
-    color:inherit !important;
+    animation: valueflash .65s ease-out;
+    background: transparent !important;
+    color: inherit !important;
 }
 
+/* ---------- NAVIGATION ---------- */
 
-.stock-inline-details {
-    display:block;
-    position:relative;
+.nav-caption {
+    color: #7c8796 !important;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin: 4px 0 6px 4px;
 }
-
-.stock-inline-details > summary {
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-    cursor:pointer;
-    list-style:none;
-    outline:none;
-}
-
-.stock-inline-details > summary::-webkit-details-marker {
-    display:none;
-}
-
-.stock-inline-details > summary::marker {
-    display:none;
-}
-
-.stock-arrow {
-    display:inline-flex;
-    width:18px;
-    height:18px;
-    align-items:center;
-    justify-content:center;
-    color:#8193b4;
-    font-size:10px;
-    font-weight:900;
-    transition:transform .12s ease, color .12s ease;
-}
-
-.stock-inline-details[open] .stock-arrow {
-    transform:rotate(90deg);
-    color:#19d3a2;
-}
-
-.inline-stock-panel {
-    margin-top:12px;
-    padding:14px 16px;
-    background:#000000;
-    border:1px solid #172642;
-    border-radius:8px;
-    min-width:650px;
-}
-
-.inline-stock-top {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:20px;
-    margin-bottom:12px;
-}
-
-.inline-stock-title {
-    font-size:13px;
-    font-weight:800;
-    color:#eef4ff;
-}
-
-.inline-stock-sub {
-    margin-top:3px;
-    font-size:10px;
-    color:#7183a4;
-}
-
-.inline-stock-price {
-    font-size:20px;
-    font-weight:900;
-    color:#19d3a2;
-}
-
-.inline-stock-metrics {
-    display:grid;
-    grid-template-columns:repeat(4, minmax(110px,1fr));
-    gap:8px;
-    margin-bottom:12px;
-}
-
-.inline-stock-metrics > div {
-    padding:8px 9px;
-    background:#000000;
-    border:1px solid #13233d;
-    border-radius:6px;
-}
-
-.inline-stock-metrics span {
-    display:block;
-    font-size:9px;
-    color:#7183a4;
-    margin-bottom:3px;
-}
-
-.inline-stock-metrics b {
-    font-size:12px;
-    color:#e7eefc;
-}
-
-.inline-depth-grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:42px;
-}
-
-.depth-heading {
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.4px;
-    margin-bottom:7px;
-    color:#9aaaca;
-}
-
-.bid-heading,
-.depth-bid-price {
-    color:#19d3a2;
-}
-
-.ask-heading,
-.depth-ask-price {
-    color:#ff5b62;
-}
-
-.depth-row {
-    display:flex;
-    justify-content:space-between;
-    gap:25px;
-    min-height:22px;
-    font-family:monospace;
-    font-size:11px;
-    color:#aebbd0;
-}
-
-.depth-empty,
-.detail-empty {
-    color:#667794;
-    font-size:10px;
-}
-
-
-.row-flash td {
-    animation:none !important;
-}
-.expanded-stock-row > td {
-    padding:0 !important;
-    border-top:0 !important;
-}
-
- .expanded-stock-row .inline-depth-panel {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:48px;
-    padding:18px 36px 20px;
-    background:#000000;
-    border-top:1px solid #111d34;
-}
-
-.inline-depth-panel .depth-column {
-    min-width:0;
-}
-
-.depth-heading {
-    font-size:12px;
-    font-weight:800;
-    letter-spacing:.4px;
-    margin-bottom:8px;
-}
-
-.bid-heading {
-    color:#19d3a2;
-}
-
-.ask-heading {
-    color:#ff5b62;
-}
-
-.depth-row {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    min-height:24px;
-    font-family:monospace;
-    font-size:12px;
-    color:#aebbd0;
-}
-
-.depth-empty {
-    color:#667794;
-    font-size:11px;
-    padding:8px 0;
-}
-
-.expanded-stock-row .detail-box {
-    margin-bottom:10px;
-}
-
-
-
-.stock-expand:hover {
-    background:#10203a;
-    color:#19d3a2;
-}
-
-.workspace-grid {
-    display:grid;
-    grid-template-columns:repeat(3, minmax(0, 1fr));
-    gap:12px;
-    margin-top:14px;
-}
-
-.workspace-card {
-    background:#000000;
-    border:1px solid #18243b;
-    border-radius:11px;
-    padding:15px;
-    min-height:155px;
-}
-
-.workspace-label {
-    color:#73839e;
-    font-size:10px;
-    font-weight:900;
-    letter-spacing:.08em;
-    margin-bottom:8px;
-}
-
-.workspace-title {
-    color:#eef3ff;
-    font-size:18px;
-    font-weight:900;
-    margin-bottom:8px;
-}
-
-.workspace-value {
-    color:#20dbaa;
-    font-size:22px;
-    font-weight:900;
-}
-
-.workspace-muted {
-    color:#7485a1;
-    font-size:11px;
-    line-height:18px;
-}
-
-.workspace-detail {
-    color:#c4cee0;
-    font-size:12px;
-    line-height:20px;
-}
-
-@media(max-width:900px) {
-    .workspace-grid {
-        grid-template-columns:1fr;
-    }
-}
-
-@keyframes livepulse {
-    0% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(32,219,170,.70); }
-    70% { opacity:.65; transform:scale(1.18); box-shadow:0 0 0 7px rgba(32,219,170,0); }
-    100% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(32,219,170,0); }
-}
-
-@keyframes valueflash {
-    0% { opacity:.35; transform:translateY(-1px); }
-    100% { opacity:1; transform:translateY(0); }
-}
-
-
-@keyframes liveblink {
-    0%,100% { opacity:1; }
-    50% { opacity:.25; }
-}
-
-/* ---------- NAV ---------- */
 
 .nav-row {
-    width:100%;
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:8px 0 12px 0;
-    margin:0;
-    position:relative;
-    z-index:20;
-    overflow:visible !important;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 12px;
+    margin: 0;
+    position: relative;
+    z-index: 20;
+    overflow: visible !important;
 }
 
 .nav-item {
-    min-width:190px;
-    height:42px;
-    box-sizing:border-box;
-    padding:10px 18px;
-    border:1px solid #18243c;
-    border-radius:9px;
-    color:#8392ad;
-    background:#050b1c;
-    text-align:center;
-    font-size:13px;
-    line-height:20px;
-    white-space:nowrap;
+    min-width: 190px;
+    height: 46px;
+    padding: 11px 18px;
+    border: 1px solid #222222;
+    border-radius: 10px;
+    color: #8b95a3;
+    background: #080808;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 22px;
+    white-space: nowrap;
+    transition: all .18s ease;
 }
 
-/* ---------- KPI ---------- */
+.nav-item:hover {
+    color: #ffffff;
+    background: #111111;
+    border-color: #3a3a3a;
+    transform: translateY(-1px);
+}
+
+/* Streamlit radio used for the four dashboard sections */
+div[data-testid="stRadio"] {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 0 12px !important;
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 30 !important;
+}
+
+div[data-testid="stRadio"] > div {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    overflow: visible !important;
+}
+
+div[data-testid="stRadio"] label {
+    min-width: 190px !important;
+    height: 46px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #080808 !important;
+    border: 1px solid #252525 !important;
+    border-radius: 10px !important;
+    padding: 8px 18px !important;
+    color: #a1a9b5 !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    transition: all .18s ease !important;
+}
+
+div[data-testid="stRadio"] label:hover {
+    background: #111111 !important;
+    border-color: #444444 !important;
+    color: #ffffff !important;
+}
+
+div[data-testid="stRadio"] label:has(input:checked) {
+    background: #071d17 !important;
+    border-color: #19a980 !important;
+    color: #19e6a5 !important;
+    box-shadow: inset 0 0 0 1px rgba(25,230,165,.12),
+                0 0 20px rgba(25,230,165,.06) !important;
+}
+
+div[data-testid="stRadio"] label p,
+div[data-testid="stRadio"] label span {
+    color: inherit !important;
+    font-weight: inherit !important;
+}
+
+/* ---------- KPI CARDS ---------- */
 
 .kpi {
-    background:#000000;
-    border:1px solid #18243b;
-    border-radius:12px;
-    min-height:100px;
-    padding:14px 14px;
+    background: #050505;
+    border: 1px solid #242424;
+    border-radius: 13px;
+    min-height: 108px;
+    padding: 15px 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+    transition: border-color .18s ease, transform .18s ease;
+}
+
+.kpi:hover {
+    border-color: #3a3a3a;
+    transform: translateY(-1px);
 }
 
 .kpi-label {
-    color:#70819d;
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.2px;
+    color: #7e8896;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
 }
 
 .kpi-value {
-    color:#eef4ff;
-    font-size:27px;
-    line-height:32px;
-    font-weight:900;
-    margin-top:6px;
+    color: #ffffff;
+    font-size: 29px;
+    line-height: 34px;
+    font-weight: 950;
+    margin-top: 7px;
+    letter-spacing: -.6px;
 }
 
 .kpi-sub {
-    color:#60718e;
-    font-size:10px;
-    margin-top:3px;
+    color: #687380;
+    font-size: 10px;
+    margin-top: 4px;
 }
 
-/* ---------- SEARCH ---------- */
+/* ---------- WORKSPACE CARDS ---------- */
 
-div[data-testid="stTextInput"] input {
-    background:#000000 !important;
-    color:#edf3ff !important;
-    border:1px solid #25334e !important;
-    border-radius:10px !important;
-    height:42px !important;
+.workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.workspace-card {
+    background: #050505;
+    border: 1px solid #232323;
+    border-radius: 13px;
+    padding: 16px;
+    min-height: 155px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.28);
+}
+
+.workspace-label {
+    color: #7f8a98;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .1em;
+    margin-bottom: 9px;
+}
+
+.workspace-title {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: -.2px;
+}
+
+.workspace-value {
+    color: var(--green);
+    font-size: 23px;
+    font-weight: 950;
+}
+
+.workspace-muted {
+    color: #727d8b;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.workspace-detail {
+    color: #c4cad3;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+/* ---------- SEARCH / INPUTS ---------- */
+
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input,
+div[data-testid="stSelectbox"] input {
+    background: #080808 !important;
+    color: #f5f7fa !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 10px !important;
+    min-height: 42px !important;
+    font-family: inherit !important;
+}
+
+div[data-testid="stTextInput"] input:focus,
+div[data-testid="stNumberInput"] input:focus {
+    border-color: #19a980 !important;
+    box-shadow: 0 0 0 1px #19a980 !important;
+}
+
+label,
+[data-testid="stWidgetLabel"] p {
+    color: #9aa3af !important;
 }
 
 /* ---------- SCREEN ---------- */
 
 .screen-shell {
-    background:#000000;
-    border:1px solid #18243b;
-    border-radius:12px 12px 0 0;
-    overflow:hidden;
+    background: #050505;
+    border: 1px solid #242424;
+    border-radius: 13px 13px 0 0;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,.28);
 }
 
 .screen-head {
-    min-height:64px;
-    padding:0 14px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    border-bottom:1px solid #18243b;
+    min-height: 66px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #222222;
+    background: #070707;
 }
 
 .screen-title {
-    color:#edf3ff;
-    font-size:18px;
-    font-weight:900;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 950;
+    letter-spacing: -.2px;
 }
 
 .screen-count {
-    color:#70819d;
-    font-size:11px;
+    color: #788391;
+    font-size: 11px;
 }
 
 /* ---------- TABLE ---------- */
 
 .table-scroll {
-    width:100%;
-    overflow-x:auto;
-    border-left:1px solid #18243b;
-    border-right:1px solid #18243b;
+    width: 100%;
+    overflow-x: auto;
+    border-left: 1px solid #242424;
+    border-right: 1px solid #242424;
+    scrollbar-color: #3b3b3b #070707;
 }
 
 .stock-table {
-    width:100%;
-    min-width:1700px;
-    border-collapse:collapse;
-    table-layout:fixed;
-    background:#050b1c;
+    width: 100%;
+    min-width: 1700px;
+    border-collapse: collapse;
+    table-layout: fixed;
+    background: #030303;
 }
 
 .stock-table th {
-    height:46px;
-    padding:0 10px;
-    text-align:left;
-    background:#091328;
-    color:#8190aa;
-    border-bottom:1px solid #26334c;
-    font-size:11px;
-    font-weight:900;
-    white-space:nowrap;
+    height: 46px;
+    padding: 0 10px;
+    text-align: left;
+    background: #0c0c0c;
+    color: #858f9c;
+    border-bottom: 1px solid #2b2b2b;
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .stock-table td {
-    height:68px;
-    padding:7px 10px;
-    border-bottom:1px solid #17233a;
-    white-space:nowrap;
-    vertical-align:middle;
+    height: 68px;
+    padding: 7px 10px;
+    border-bottom: 1px solid #171717;
+    white-space: nowrap;
+    vertical-align: middle;
+    color: #d2d7df;
+    font-size: 12px;
 }
 
 .stock-table tr:hover td {
-    background:#08152b;
+    background: #0b0b0b;
 }
-
 
 .stock-link {
-    color:inherit;
-    text-decoration:none;
-    display:block;
-    cursor:pointer;
+    color: inherit;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
 }
- .stock-expand {
-    display:inline-flex;
-    width:20px;
-    height:20px;
-    align-items:center;
-    justify-content:center;
-    margin-right:7px;
-    border:1px solid #263956;
-    border-radius:5px;
-    color:#8fa4c4;
-    background:#081226;
-    text-decoration:none;
-    font-size:12px;
-    font-weight:900;
-    vertical-align:middle;
-}
-.stock-expand:hover {
-    color:#ffffff;
-    background:#12315a;
-    border-color:#3f79b8;
-}
+
 .stock-link:hover .symbol {
-    color:#4da3ff;
-    text-decoration:underline;
+    color: var(--green);
+    text-decoration: underline;
 }
-.live-stock-detail {
-    margin-top:14px;
-    border:1px solid #1b2b47;
-    border-radius:12px;
-    background:#050b1c;
-    padding:16px;
+
+.stock-expand {
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 7px;
+    border: 1px solid #343434;
+    border-radius: 6px;
+    color: #aab3be;
+    background: #0b0b0b;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 900;
+    vertical-align: middle;
 }
-.live-detail-grid {
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:10px;
-    margin-top:12px;
+
+.stock-expand:hover {
+    color: #ffffff;
+    background: #12352d;
+    border-color: #198e70;
 }
-.live-detail-card {
-    border:1px solid #17243c;
-    border-radius:9px;
-    padding:12px;
-    background:#071025;
-}
-.live-detail-label {
-    color:#6f82a1;
-    font-size:10px;
-    font-weight:800;
-    letter-spacing:.06em;
-}
-.live-detail-value {
-    color:#eef4ff;
-    font-size:18px;
-    font-weight:900;
-    margin-top:4px;
-}
-.live-detail-sub {
-    color:#8191ad;
-    font-size:11px;
-    margin-top:3px;
-}
-@media(max-width:900px) {
-    .live-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
+
 .symbol {
-    color:#eef3ff;
-    font-size:16px;
-    font-weight:900;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 950;
+    letter-spacing: -.15px;
 }
 
 .company {
-    color:#62738f;
-    font-size:10px;
-    margin-top:2px;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    color: #707b89;
+    font-size: 10px;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .ltp {
-    font-size:17px;
-    font-weight:900;
+    font-size: 17px;
+    font-weight: 950;
+    color: #ffffff;
 }
 
 .metric {
-    color:#c1ccde;
-    font-size:14px;
+    color: #c5ccd5;
+    font-size: 14px;
 }
 
 .bid {
-    color:#20dbaa;
-    font-weight:800;
-    font-size:14px;
+    color: var(--green);
+    font-weight: 850;
+    font-size: 14px;
 }
 
 .ask {
-    color:#ff646c;
-    font-weight:800;
-    font-size:14px;
+    color: var(--red);
+    font-weight: 850;
+    font-size: 14px;
 }
 
 /* ---------- TREND ---------- */
 
 .trend-box {
-    width:110px;
-    height:42px;
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
-    overflow:hidden;
-    box-sizing:border-box;
+    width: 110px;
+    height: 42px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .trend-box svg {
-    width:105px !important;
-    height:38px !important;
-    display:block;
+    width: 105px !important;
+    height: 38px !important;
+    display: block;
 }
 
 .no-trend {
-    color:#53627b;
-    font-size:19px;
+    color: #4f5966;
+    font-size: 13px;
 }
 
-/* ---------- SIGNAL ---------- */
+/* ---------- SIGNALS ---------- */
 
 .signal {
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:7px;
-    font-size:11px;
-    font-weight:900;
+    display: inline-block;
+    padding: 6px 11px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: .06em;
 }
 
-.pass {
-    color:#20dbaa;
-    background:#06271f;
-    border:1px solid #0b6755;
-}
-
+.pass,
 .buy {
-    color:#20dbaa;
-    background:#06271f;
-    border:1px solid #0b6755;
+    color: var(--green);
+    background: var(--green-soft);
+    border: 1px solid #0c735b;
 }
 
 .sell {
-    color:#ff646c;
-    background:#2a0d17;
-    border:1px solid #7d2637;
+    color: var(--red);
+    background: var(--red-soft);
+    border: 1px solid #7d2637;
+}
+
+/* ---------- INLINE STOCK DETAILS ---------- */
+
+.stock-inline-details {
+    display: block;
+    position: relative;
+}
+
+.stock-inline-details > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    list-style: none;
+    outline: none;
+}
+
+.stock-inline-details > summary::-webkit-details-marker,
+.stock-inline-details > summary::marker {
+    display: none;
+}
+
+.stock-arrow {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    color: #8995a4;
+    font-size: 10px;
+    font-weight: 900;
+    transition: transform .12s ease, color .12s ease;
+}
+
+.stock-inline-details[open] .stock-arrow {
+    transform: rotate(90deg);
+    color: var(--green);
+}
+
+.inline-stock-panel {
+    margin-top: 12px;
+    padding: 15px 17px;
+    background: #080808;
+    border: 1px solid #292929;
+    border-radius: 10px;
+    min-width: 650px;
+}
+
+.inline-stock-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.inline-stock-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+.inline-stock-sub {
+    margin-top: 3px;
+    font-size: 10px;
+    color: #707b89;
+}
+
+.inline-stock-price {
+    font-size: 20px;
+    font-weight: 950;
+    color: var(--green);
+}
+
+.inline-stock-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.inline-stock-metrics > div {
+    padding: 9px;
+    background: #0d0d0d;
+    border: 1px solid #242424;
+    border-radius: 7px;
+}
+
+.inline-stock-metrics span {
+    display: block;
+    font-size: 9px;
+    color: #737e8c;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.inline-stock-metrics b {
+    font-size: 12px;
+    color: #e7ebf1;
+}
+
+.inline-depth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 42px;
+}
+
+.depth-heading {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .05em;
+    margin-bottom: 7px;
+    color: #9ba5b1;
+}
+
+.bid-heading,
+.depth-bid-price {
+    color: var(--green);
+}
+
+.ask-heading,
+.depth-ask-price {
+    color: var(--red);
+}
+
+.depth-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 25px;
+    min-height: 24px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    color: #b5bec9;
+}
+
+.depth-empty,
+.detail-empty {
+    color: #59636f;
+    font-size: 10px;
+}
+
+.expanded-stock-row > td {
+    padding: 0 !important;
+    border-top: 0 !important;
+}
+
+.expanded-stock-row .inline-depth-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    padding: 18px 36px 20px;
+    background: #080808;
+    border-top: 1px solid #1d1d1d;
+}
+
+.expanded-stock-row .detail-box {
+    margin-bottom: 10px;
+}
+
+/* ---------- LIVE DETAIL ---------- */
+
+.live-stock-detail {
+    margin-top: 14px;
+    border: 1px solid #292929;
+    border-radius: 12px;
+    background: #050505;
+    padding: 16px;
+}
+
+.live-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.live-detail-card {
+    border: 1px solid #232323;
+    border-radius: 9px;
+    padding: 12px;
+    background: #0a0a0a;
+}
+
+.live-detail-label {
+    color: #74808d;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .07em;
+}
+
+.live-detail-value {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 950;
+    margin-top: 4px;
+}
+
+.live-detail-sub {
+    color: #7c8794;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+/* ---------- AI ---------- */
+
+.ai-card {
+    background: #050505;
+    border: 1px solid #242424;
+    border-radius: 12px;
+    padding: 14px;
+    min-height: 100px;
+}
+
+.ai-label {
+    color: #7d8794;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .07em;
+}
+
+.ai-value {
+    color: #ffffff;
+    font-size: 25px;
+    font-weight: 950;
+    margin-top: 5px;
+}
+
+.ai-sub {
+    color: #687380;
+    font-size: 10px;
+}
+
+.ai-buy {
+    color: var(--green);
+    font-weight: 950;
+}
+
+.ai-sell {
+    color: var(--red);
+    font-weight: 950;
+}
+
+.ai-hold {
+    color: var(--yellow);
+    font-weight: 950;
+}
+
+.ai-table,
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #030303;
+}
+
+.ai-table {
+    min-width: 1450px;
+}
+
+.ai-table th,
+.trade-table th {
+    background: #0c0c0c;
+    color: #858f9c;
+    font-size: 10px;
+    padding: 11px 9px;
+    text-align: left;
+    border-bottom: 1px solid #292929;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.ai-table td,
+.trade-table td {
+    color: #c7ced7;
+    font-size: 11px;
+    padding: 11px 9px;
+    border-bottom: 1px solid #171717;
+    vertical-align: top;
+}
+
+.ai-table tr:hover td,
+.trade-table tr:hover td {
+    background: #0a0a0a;
+}
+
+.ai-scroll,
+.trade-scroll {
+    width: 100%;
+    overflow: auto;
+    border: 1px solid #242424;
+    border-radius: 10px;
+}
+
+.score {
+    font-weight: 950;
+    font-size: 14px;
+}
+
+.reason {
+    color: #788390;
+    white-space: normal;
+    line-height: 17px;
+    min-width: 260px;
+}
+
+/* ---------- TRADE LOG ---------- */
+
+.trade-table {
+    min-width: 1250px;
+}
+
+.paper-note {
+    color: #687380;
+    font-size: 10px;
+    padding: 10px 0;
+}
+
+/* ---------- DETAIL ---------- */
+
+.detail-box {
+    background: #050505;
+    border: 1px solid #242424;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.22);
+}
+
+.detail-title {
+    color: #ffffff;
+    font-size: 21px;
+    font-weight: 950;
+    letter-spacing: -.25px;
+}
+
+.detail-sub {
+    color: #6f7a87;
+    font-size: 11px;
+}
+
+.detail-metric {
+    color: #c4cbd4;
+    font-size: 14px;
+    padding: 7px 0;
+    border-bottom: 1px solid #171717;
 }
 
 /* ---------- FOOTER ---------- */
 
 .footer {
-    margin-top:18px;
-    padding:12px;
-    border-top:1px solid #17233a;
-    color:#5f708c;
-    font-size:10px;
+    margin-top: 18px;
+    padding: 14px 4px;
+    border-top: 1px solid #1b1b1b;
+    color: #5e6875;
+    font-size: 10px;
 }
 
+/* ---------- STREAMLIT DATAFRAME FALLBACK ---------- */
 
-/* ---------- INTERACTIVE NAV ---------- */
-.nav-caption { color:#71819d; font-size:10px; margin:2px 0 3px 4px; }
-div[data-testid="stRadio"] > div { gap:8px !important; }
-div[data-testid="stRadio"] label {
-    background:#050b1c !important;
-    border:1px solid #18243c !important;
-    border-radius:9px !important;
-    padding:8px 18px !important;
-    color:#8291ac !important;
+[data-testid="stDataFrame"] {
+    border: 1px solid #242424 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
 }
 
-/* ---------- AI ---------- */
-.ai-card { background:#060d20; border:1px solid #18243b; border-radius:11px; padding:14px; min-height:100px; }
-.ai-label { color:#70819d; font-size:10px; font-weight:800; }
-.ai-value { color:#edf3ff; font-size:24px; font-weight:900; margin-top:5px; }
-.ai-sub { color:#60718e; font-size:10px; }
-.ai-buy { color:#20dbaa; font-weight:900; }
-.ai-sell { color:#ff646c; font-weight:900; }
-.ai-hold { color:#f7c948; font-weight:900; }
-.ai-table { width:100%; border-collapse:collapse; min-width:1450px; background:#050b1c; }
-.ai-table th { background:#091328; color:#8190aa; font-size:10px; padding:11px 9px; text-align:left; border-bottom:1px solid #26334c; white-space:nowrap; }
-.ai-table td { color:#c1ccde; font-size:11px; padding:11px 9px; border-bottom:1px solid #17233a; vertical-align:top; }
-.ai-scroll { width:100%; overflow:auto; border:1px solid #18243b; border-radius:10px; }
-.score { font-weight:900; font-size:14px; }
-.reason { color:#7889a5; white-space:normal; line-height:17px; min-width:260px; }
+/* ---------- BUTTONS ---------- */
 
-/* ---------- TRADE LOG ---------- */
-.trade-table { width:100%; border-collapse:collapse; min-width:1250px; background:#050b1c; }
-.trade-table th { background:#091328; color:#8190aa; font-size:10px; padding:11px 9px; text-align:left; border-bottom:1px solid #26334c; white-space:nowrap; }
-.trade-table td { color:#c1ccde; font-size:11px; padding:11px 9px; border-bottom:1px solid #17233a; }
-.trade-scroll { width:100%; overflow:auto; border:1px solid #18243b; border-radius:10px; }
-.paper-note { color:#647591; font-size:10px; padding:10px 0; }
-
-/* ---------- DETAIL ---------- */
-.detail-box { background:#060d20; border:1px solid #18243b; border-radius:11px; padding:15px; }
-.detail-title { color:#edf3ff; font-size:21px; font-weight:900; }
-.detail-sub { color:#687995; font-size:11px; }
-.detail-metric { color:#c3cde0; font-size:14px; padding:7px 0; border-bottom:1px solid #142038; }
-div[data-testid="stRadio"] {
-    width:100% !important;
-    margin:0 !important;
-    padding:0 0 8px 0 !important;
-    overflow:visible !important;
-    position:relative !important;
-    z-index:30 !important;
+.stButton > button {
+    background: #090909 !important;
+    color: #dfe4ea !important;
+    border: 1px solid #292929 !important;
+    border-radius: 9px !important;
+    font-weight: 800 !important;
+    transition: all .18s ease !important;
 }
 
-div[data-testid="stRadio"] > div {
-    width:100% !important;
-    display:flex !important;
-    flex-wrap:nowrap !important;
-    gap:10px !important;
-    overflow:visible !important;
+.stButton > button:hover {
+    background: #10241f !important;
+    color: var(--green) !important;
+    border-color: #198e70 !important;
 }
 
-div[data-testid="stRadio"] label {
-    min-width:190px !important;
-    height:42px !important;
-    box-sizing:border-box !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    background:#050b1c !important;
-    border:1px solid #18243c !important;
-    border-radius:9px !important;
-    padding:8px 18px !important;
-    color:#8291ac !important;
-    white-space:nowrap !important;
-    overflow:visible !important;
+.stButton > button:focus {
+    box-shadow: 0 0 0 1px #19a980 !important;
 }
+
+/* ---------- SCROLLBARS ---------- */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #363636 #050505;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #363636;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+}
+
+/* ---------- ANIMATIONS ---------- */
+
+@keyframes livepulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(25,230,165,.65);
+    }
+    70% {
+        opacity: .65;
+        transform: scale(1.18);
+        box-shadow: 0 0 0 7px rgba(25,230,165,0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(25,230,165,0);
+    }
+}
+
+@keyframes valueflash {
+    0% {
+        opacity: .35;
+        transform: translateY(-1px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes liveblink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .25;
+    }
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 1100px) {
+    .workspace-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nav-row {
+        overflow-x: auto !important;
+    }
+
+    div[data-testid="stRadio"] > div {
+        overflow-x: auto !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .workspace-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .live-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inline-stock-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .topbar {
+        min-height: 74px;
+        padding: 13px 14px;
+    }
+
+    .brand-title {
+        font-size: 18px;
+    }
+
+    .status-live,
+    .status-closed {
+        padding: 6px 9px;
+        font-size: 9px;
+    }
+
+    .clock {
+        display: none;
+    }
+
+    .live-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 """,
+    unsafe_allow_html=True,
+)
     unsafe_allow_html=True,
 )
 
@@ -974,7 +1343,7 @@ def get_text(row, *names, default=""):
     return str(value)
 
 def money(value):
-    return f"₹{to_num(value):,.2f}"
+    return f"â‚¹{to_num(value):,.2f}"
 
 
 def qty_format(value):
@@ -1328,7 +1697,6 @@ def sparkline(values, color):
             overflow:hidden;
             padding:3px 2px;
             box-sizing:border-box;
-            
         "
     >
         {''.join(bars)}
@@ -1429,91 +1797,198 @@ def etq_for_symbol(symbol, live):
 
 
 # ============================================================
-# LOAD DATA
+# LOAD DATA - FULL DIAGNOSTIC VERSION
 # ============================================================
-# ============================================================
-# LOAD DATA
-# ============================================================
+
+# ------------------------------------------------------------
+# INITIALIZE
+# ------------------------------------------------------------
 
 ai_df = pd.DataFrame()
 smma_df = pd.DataFrame()
 features_df = pd.DataFrame()
 live = pd.DataFrame()
-local_ai_df = pd.DataFrame()
 
+# ------------------------------------------------------------
+# SHOW ACTUAL PATHS
+# ------------------------------------------------------------
+
+st.write("### ðŸ” StockAI Data Loader")
+
+st.write("ROOT:", str(ROOT))
+st.write("DATASET:", str(DATASET))
+
+# ------------------------------------------------------------
+# CHECK DATASET DIRECTORY
+# ------------------------------------------------------------
+
+if not DATASET.exists():
+
+    st.error(
+        f"âŒ DATASET FOLDER NOT FOUND\n\n"
+        f"Expected folder:\n{DATASET}"
+    )
+
+else:
+
+    st.success(
+        f"âœ… Dataset folder found:\n{DATASET}"
+    )
+
+    # Show every CSV that actually exists
+    csv_files = list(DATASET.glob("*.csv"))
+
+    if csv_files:
+
+        st.write("### CSV files found:")
+
+        for file in csv_files:
+
+            try:
+
+                size = file.stat().st_size
+
+                st.write(
+                    f"âœ… `{file.name}` â€” {size:,} bytes"
+                )
+
+            except Exception:
+
+                st.write(
+                    f"âœ… `{file.name}`"
+                )
+
+    else:
+
+        st.error(
+            "âŒ NO CSV FILES FOUND INSIDE DATASET FOLDER"
+        )
 
 # ============================================================
-# LOCAL CSV FALLBACKS
+# FUNCTION TO LOAD CSV WITH REAL ERROR
 # ============================================================
 
-try:
-    if LIVE_SMMA.exists():
-        smma_df = pd.read_csv(
-            LIVE_SMMA,
+def load_live_csv(path, name):
+
+    st.write(f"### Loading {name}")
+
+    st.write(
+        "Expected path:",
+        str(path)
+    )
+
+    if not path.exists():
+
+        st.error(
+            f"âŒ {name} FILE NOT FOUND\n\n"
+            f"Expected:\n{path}"
+        )
+
+        return pd.DataFrame()
+
+    try:
+
+        data = pd.read_csv(
+            path,
             low_memory=False
         )
-except Exception:
-    smma_df = pd.DataFrame()
 
-
-try:
-    if LIVE_FEATURES.exists():
-        features_df = pd.read_csv(
-            LIVE_FEATURES,
-            low_memory=False
+        st.success(
+            f"âœ… {name} loaded â€” "
+            f"{len(data):,} rows Ã— {len(data.columns):,} columns"
         )
-except Exception:
-    features_df = pd.DataFrame()
 
+        if not data.empty:
 
-try:
-    if LIVE_TICKS.exists():
-        live = pd.read_csv(
-            LIVE_TICKS,
-            low_memory=False
+            st.write(
+                f"{name} columns:"
+            )
+
+            st.code(
+                ", ".join(
+                    str(c)
+                    for c in data.columns
+                )
+            )
+
+        return data
+
+    except Exception as e:
+
+        st.error(
+            f"âŒ {name} READ ERROR:\n{e}"
         )
-except Exception:
-    live = pd.DataFrame()
 
-
-try:
-    if LIVE_AI.exists():
-        local_ai_df = pd.read_csv(
-            LIVE_AI,
-            low_memory=False
-        )
-except Exception:
-    local_ai_df = pd.DataFrame()
+        return pd.DataFrame()
 
 
 # ============================================================
-# SUPABASE AI SIGNALS
+# 1. LIVE TICKS
 # ============================================================
 
+live = load_live_csv(
+    LIVE_TICKS,
+    "LIVE TICKS"
+)
+
+
 # ============================================================
-# SUPABASE AI SIGNALS
+# 2. SMMA
 # ============================================================
 
-supabase = None
+smma_df = load_live_csv(
+    LIVE_SMMA,
+    "LIVE SMMA"
+)
+
+
+# ============================================================
+# 3. ML FEATURES
+# ============================================================
+
+features_df = load_live_csv(
+    LIVE_FEATURES,
+    "LIVE ML FEATURES"
+)
+
+
+# ============================================================
+# 4. LOCAL AI SIGNALS
+# ============================================================
+
+local_ai_df = load_live_csv(
+    LIVE_AI,
+    "LOCAL AI SIGNALS"
+)
+
+
+# ============================================================
+# 5. SUPABASE AI SIGNALS
+# ============================================================
+
 supabase_ai_df = pd.DataFrame()
 
-try:
-    SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
-    SUPABASE_KEY = st.secrets.get("SUPABASE_SERVICE_KEY", "")
+if supabase is None:
 
-    if SUPABASE_URL and SUPABASE_KEY:
-        from supabase import create_client
+    st.warning(
+        "âš ï¸ Supabase client is NOT initialized."
+    )
 
-        supabase = create_client(
-            SUPABASE_URL,
-            SUPABASE_KEY
-        )
+    st.write(
+        "SUPABASE_URL configured:",
+        bool(SUPABASE_URL)
+    )
 
-except Exception:
-    supabase = None
+    st.write(
+        "SUPABASE_KEY configured:",
+        bool(SUPABASE_KEY)
+    )
 
+else:
 
-if supabase is not None:
+    st.success(
+        "âœ… Supabase client initialized"
+    )
 
     try:
 
@@ -1527,33 +2002,82 @@ if supabase is not None:
         rows = response.data or []
 
         if rows:
-            supabase_ai_df = pd.DataFrame(rows)
 
-    except Exception:
-        supabase_ai_df = pd.DataFrame()
+            supabase_ai_df = pd.DataFrame(
+                rows
+            )
+
+            st.success(
+                "âœ… SUPABASE AI SIGNALS loaded â€” "
+                f"{len(supabase_ai_df):,} rows"
+            )
+
+            st.write(
+                "Supabase columns:"
+            )
+
+            st.code(
+                ", ".join(
+                    str(c)
+                    for c in supabase_ai_df.columns
+                )
+            )
+
+        else:
+
+            st.warning(
+                "âš ï¸ Supabase table `live_ai_signals` "
+                "returned ZERO rows."
+            )
+
+    except Exception as e:
+
+        st.error(
+            "âŒ SUPABASE READ ERROR"
+        )
+
+        st.exception(e)
+
+
 # ============================================================
-# SELECT AI SOURCE
+# 6. SELECT AI SOURCE
 # ============================================================
 
 if not supabase_ai_df.empty:
 
     ai_df = supabase_ai_df.copy()
 
+    st.success(
+        "ðŸŸ¢ AI SOURCE = SUPABASE"
+    )
+
 elif not local_ai_df.empty:
 
     ai_df = local_ai_df.copy()
 
+    st.success(
+        "ðŸŸ¢ AI SOURCE = LOCAL CSV"
+    )
+
+else:
+
+    ai_df = pd.DataFrame()
+
+    st.error(
+        "ðŸ”´ NO AI SIGNAL DATA AVAILABLE"
+    )
+
 
 # ============================================================
-# NORMALIZE COLUMN NAMES
+# 7. NORMALIZE COLUMN NAMES
 # ============================================================
 
-for data in (
-    ai_df,
-    smma_df,
-    features_df,
-    live,
-):
+for data_name, data in [
+    ("AI", ai_df),
+    ("SMMA", smma_df),
+    ("FEATURES", features_df),
+    ("LIVE", live),
+]:
 
     if not data.empty:
 
@@ -1564,236 +2088,72 @@ for data in (
 
 
 # ============================================================
-# NORMALIZE SUPABASE COLUMN NAMES
+# 8. FINAL DATA STATUS
 # ============================================================
 
-if not ai_df.empty:
+st.write("## ðŸ“Š FINAL DATA STATUS")
 
-    rename_map = {
+status_data = pd.DataFrame({
 
-        "symbol": "Symbol",
+    "Data": [
+        "AI Signals",
+        "SMMA",
+        "ML Features",
+        "Live Ticks",
+    ],
 
-        "ltp_live": "LTP_LIVE",
+    "Rows": [
+        len(ai_df),
+        len(smma_df),
+        len(features_df),
+        len(live),
+    ],
 
-        "current_ltp": "Current_LTP",
+    "Status": [
+        "AVAILABLE" if not ai_df.empty else "EMPTY",
+        "AVAILABLE" if not smma_df.empty else "EMPTY",
+        "AVAILABLE" if not features_df.empty else "EMPTY",
+        "AVAILABLE" if not live.empty else "EMPTY",
+    ],
+})
 
-        "timestamp_live": "Timestamp_LIVE",
-
-        "ltq": "LTQ",
-
-        "ltq_2min_avg": "LTQ_2min_avg",
-
-        "ltq_5min_avg": "LTQ_5min_avg",
-
-        "ltq_spike_ratio": "LTQ_Spike_Ratio",
-
-        "etq_5min": "ETQ_5min",
-
-        "etq_20min": "ETQ_20min",
-
-        "etq_60min": "ETQ_60min",
-
-        "bidqty": "BidQty",
-
-        "askqty": "AskQty",
-
-        "bidask_imbalance": "BidAsk_Imbalance",
-
-        "volume": "Volume",
-
-        "return_1": "Return_1",
-
-        "return_5": "Return_5",
-
-        "smma20_live": "smma20",
-
-        "smma120_live": "smma120",
-
-        "ml_probability": "ML_Probability",
-
-        "price_filter": "Price_Filter",
-
-        "liquidity_filter": "Liquidity_Filter",
-
-        "ltq_strong": "LTQ_Strong",
-
-        "ltq_moderate": "LTQ_Moderate",
-
-        "depth_bullish": "Depth_Bullish",
-
-        "depth_bearish": "Depth_Bearish",
-
-        "decision": "Decision",
-
-        "reason": "Reason",
-
-        "direction": "direction",
-
-        "entry_price": "entry_price",
-
-    }
-
-    ai_df = ai_df.rename(
-        columns={
-            old: new
-            for old, new in rename_map.items()
-            if old in ai_df.columns
-        }
-    )
+st.dataframe(
+    status_data,
+    use_container_width=True,
+    hide_index=True
+)
 
 
 # ============================================================
-# GUARANTEE REQUIRED AI COLUMNS
-# ============================================================
-
-required_ai_columns = [
-
-    "Symbol",
-    "Current_LTP",
-    "LTP_LIVE",
-    "LTQ",
-    "LTQ_2min_avg",
-    "LTQ_5min_avg",
-    "LTQ_Spike_Ratio",
-    "ETQ_5min",
-    "ETQ_20min",
-    "ETQ_60min",
-    "BidQty",
-    "AskQty",
-    "BidAsk_Imbalance",
-    "Volume",
-    "Return_1",
-    "Return_5",
-    "smma20",
-    "smma120",
-    "ML_Probability",
-    "Price_Filter",
-    "Liquidity_Filter",
-    "LTQ_Strong",
-    "LTQ_Moderate",
-    "Depth_Bullish",
-    "Depth_Bearish",
-    "Decision",
-    "Reason",
-]
-
-for column in required_ai_columns:
-
-    if column not in ai_df.columns:
-
-        ai_df[column] = 0
-
-
-# ============================================================
-# SYMBOL MUST ALWAYS EXIST
-# ============================================================
-
-if "Symbol" not in ai_df.columns:
-
-    ai_df["Symbol"] = pd.Series(
-        dtype="object"
-    )
-
-else:
-
-    ai_df["Symbol"] = (
-        ai_df["Symbol"]
-        .astype(str)
-        .str.strip()
-    )
-
-
-# ============================================================
-# SAFE LIVE DATA COLUMNS
-# ============================================================
-
-for data in (
-    live,
-    smma_df,
-    features_df,
-):
-
-    if "Symbol" not in data.columns:
-
-        data["Symbol"] = pd.Series(
-            dtype="object"
-        )
-
-
-# ============================================================
-# NUMERIC CONVERSION
-# ============================================================
-
-numeric_columns = [
-
-    "Current_LTP",
-    "LTP_LIVE",
-    "LTQ",
-    "LTQ_2min_avg",
-    "LTQ_5min_avg",
-    "LTQ_Spike_Ratio",
-    "ETQ_5min",
-    "ETQ_20min",
-    "ETQ_60min",
-    "BidQty",
-    "AskQty",
-    "BidAsk_Imbalance",
-    "Volume",
-    "Return_1",
-    "Return_5",
-    "smma20",
-    "smma120",
-    "ML_Probability",
-]
-
-for column in numeric_columns:
-
-    if column in ai_df.columns:
-
-        ai_df[column] = pd.to_numeric(
-            ai_df[column],
-            errors="coerce"
-        )
-
-
-# ============================================================
-# KEEP AI DATA AVAILABLE TO THE DASHBOARD
-# ============================================================
-
-df = ai_df.copy()
-
-if "Symbol" not in df.columns:
-
-    df["Symbol"] = pd.Series(
-        dtype="object"
-    )
-# ============================================================
-# LIVE DATA STATUS
+# 9. WARNINGS
 # ============================================================
 
 if ai_df.empty:
+
     st.warning(
-        "Live AI signals are not currently available. "
-        "The live signal engine must be running to generate "
-        "real-time signals."
+        "Live AI signals are not currently available."
     )
 
-    ai_df = pd.DataFrame()
 
 if smma_df.empty:
+
     st.warning(
         "Live SMMA data is not currently available."
     )
 
-    smma_df = pd.DataFrame()
 
 if features_df.empty:
+
     st.warning(
         "Live ML features are not currently available."
     )
 
-    features_df = pd.DataFrame()
 
+if live.empty:
+
+    st.warning(
+        "Live market tick data is not currently available."
+    )
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
 # ============================================================
@@ -1815,26 +2175,47 @@ if "Symbol" not in df.columns:
         ]
     )
 
+# ============================================================
+# SAFE LTP NORMALIZATION
+# ============================================================
+
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
         df["Current_LTP"],
         errors="coerce"
     )
-else:
+elif "LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
-        df.get("LTP", 0),
+        df["LTP"],
         errors="coerce"
     )
+else:
+    df["LTP"] = 0.0
 
+df["LTP"] = df["LTP"].fillna(0)
+
+# ============================================================
+# ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
+# ============================================================
+
+# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(
+        df["Signal"],
+        index=df.index
+    ).fillna("NONE").astype(str).str.upper().str.strip()
 
+# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(
+        df["Decision"],
+        index=df.index
+    ).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1919,15 +2300,27 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
+# ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
+# ============================================================
+
+# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(
+        df["Signal"],
+        index=df.index
+    ).fillna("NONE").astype(str).str.upper().str.strip()
 
+# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(
+        df["Decision"],
+        index=df.index
+    ).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
@@ -1935,22 +2328,22 @@ else:
 # SAFE LTP NORMALIZATION
 # ============================================================
 
-if "Current_LTP" in df.columns:
-    df["LTP"] = pd.to_numeric(
-        df["Current_LTP"],
-        errors="coerce"
-    )
-elif "LTP" in df.columns:
+if "LTP" not in df.columns:
+    if "Current_LTP" in df.columns:
+        df["LTP"] = pd.to_numeric(
+            df["Current_LTP"],
+            errors="coerce"
+        )
+    else:
+        df["LTP"] = 0.0
+else:
     df["LTP"] = pd.to_numeric(
         df["LTP"],
         errors="coerce"
     )
-else:
-    df["LTP"] = 0.0
 
 df["LTP"] = df["LTP"].fillna(0)
 
-# ============================================================
 if "BidQty" not in df.columns:
     df["BidQty"] = 0.0
 if "AskQty" not in df.columns:
@@ -1967,9 +2360,6 @@ scanned["DepthTotal"] = scanned["BidQty"] + scanned["AskQty"]
 scanned["PASS"] = (
     scanned["DepthTotal"] >= 100_000
 )
-if "Symbol" not in scanned.columns:
-    scanned["Symbol"] = ""
-
 passed = (
     scanned[scanned["PASS"]]
     .sort_values(
@@ -2029,31 +2419,9 @@ def etq_values(symbol, row=None):
             e60 = get_value(row, "ETQ_60min", "ETQ60", default=0)
     return e5, e20, e60
 
-# ============================================================
-# SAFE ETQ TOTALS
-# ============================================================
-
-if "Symbol" in passed.columns and not passed.empty:
-    passed_symbols = passed["Symbol"].astype(str)
-
-    total_5 = sum(
-        ETQ5.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-
-    total_20 = sum(
-        ETQ20.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-
-    total_60 = sum(
-        ETQ60.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-else:
-    total_5 = 0
-    total_20 = 0
-    total_60 = 0
+total_5 = sum(ETQ5.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+total_20 = sum(ETQ20.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+total_60 = sum(ETQ60.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
 
 # ============================================================
 # AI SIGNAL ENGINE
@@ -2179,15 +2547,6 @@ def ai_signal_for_row(row):
         "Class": cls,
     }
 
-def build_ai_analysis(scanned):
-    if scanned is None or scanned.empty:
-        return pd.DataFrame(
-            columns=[
-                "Symbol",
-                "Signal",
-                "Decision",
-            ]
-        )
 
 def build_ai_analysis(source_df):
     rows = []
@@ -2196,33 +2555,8 @@ def build_ai_analysis(source_df):
     return pd.DataFrame(rows)
 
 
-# ============================================================
-# SAFE AI ANALYSIS / PASSED FILTER
-# ============================================================
-
 AI_ALL = build_ai_analysis(scanned)
-
-if not isinstance(AI_ALL, pd.DataFrame):
-    AI_ALL = pd.DataFrame()
-
-if "Symbol" not in AI_ALL.columns:
-    AI_ALL["Symbol"] = pd.Series(dtype=str)
-
-if "Symbol" not in passed.columns:
-    passed["Symbol"] = pd.Series(dtype=str)
-
-passed_symbols = (
-    passed["Symbol"]
-    .astype(str)
-    .map(clean_symbol)
-)
-
-AI_PASSED = AI_ALL[
-    AI_ALL["Symbol"]
-    .astype(str)
-    .map(clean_symbol)
-    .isin(passed_symbols)
-].copy()
+AI_PASSED = AI_ALL[AI_ALL["Symbol"].isin(passed["Symbol"].map(clean_symbol))].copy()
 
 # ============================================================
 # PAPER TRADE LOG - ONE CURRENT RECORD PER STOCK
@@ -2280,22 +2614,15 @@ TRADE_LOG = update_trade_log(AI_ALL)
 def live_top_header():
     header_now = datetime.now(IST)
     header_status = (
-        '<span class="status-live blink">● LIVE · 2 SEC</span>'
+        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
         if market_is_open(header_now)
-        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
+        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
     )
 
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">
-                <span class="logo-bars">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                </span>
-            </div>
+            <div class="logo">â–¥</div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2313,24 +2640,11 @@ def live_top_header():
 live_top_header()
 
 # ============================================================
-# NAV
-# ============================================================
-# ============================================================
-# NAV
+# ONLY LIVE DASHBOARD
 # ============================================================
 
-page = st.radio(
-    "Dashboard sections",
-    [
-        "Live Dashboard",
-        "AI Signal Analysis",
-        "Trade Log",
-        "Stock Detail"
-    ],
-    horizontal=True,
-    label_visibility="collapsed",
-    key="dashboard_page"
-)
+page = "Live Dashboard"
+
 # ============================================================
 # LIVE DASHBOARD
 # ============================================================
@@ -2600,10 +2914,11 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">\u25CF LIVE \u00B7 2 SEC</span>'
+        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">\u25CF MARKET CLOSED \u00B7 DATA FROZEN</span>'
-    )   
+        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
+    )
+
     # ------------------------------------------------------------
     # KPI COUNTS
     # ------------------------------------------------------------
@@ -2651,34 +2966,34 @@ def render_live_dashboard():
 
     kpis = [
         (
-            "〽 SCANNING",
+            "ã€½ SCANNING",
             f"{scanning_count:,}",
-            "₹30–₹500 stocks"
+            "â‚¹30â€“â‚¹500 stocks"
         ),
         (
-            "▽ PASS SCREEN",
+            "â–½ PASS SCREEN",
             f"{len(passed):,}",
             "Bid + Ask > 1L"
         ),
         (
-            "↗ ETQ 5M",
+            "â†— ETQ 5M",
             qty_format(total_5),
             "qualified stocks"
         ),
         (
-            "↗  ETQ 20M",
+            "â†— ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "↗  ETQ 60M",
+            "â†— ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
-            "◉ MARKET",
+            "â—‰ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15\u201315:30 IST"
+            "09:15â€“15:30 IST"
         )
     ]
 
@@ -2730,9 +3045,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE \u00B7 2 SEC'
+        '<span class="live-dot"></span>LIVE Â· 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED \u00B7 DATA FROZEN"
+        else "MARKET CLOSED Â· DATA FROZEN"
     )
 
     render_html(
@@ -2740,16 +3055,17 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    \U0001F3AF Qualified Stocks \u2014
-                    LTP \u20B930\u2013\u20B9500 \u00B7 Bid/Ask &gt; 1L
+                    ðŸŽ¯ Qualified Stocks â€”
+                    LTP â‚¹30â€“â‚¹500 Â· Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying \u00B7 {state_text}
+                    {len(view):,} qualifying Â· {state_text}
                 </div>
             </div>
         </div>
         """
     )
+
     # ------------------------------------------------------------
     # TABLE
     # ------------------------------------------------------------
@@ -3032,7 +3348,9 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            "Angel One \u00B7 Real LTP history \u00B7 5-level market depth \u00B7 AI signal engine \u00B7 ETQ = real LTQ \u00B7 Auto refresh = 2 seconds \u00B7 Status = FROZEN"
+            Angel One Â· Real LTP history Â· 5-level market depth Â·
+            AI signal engine Â· ETQ = real LTQ Â·
+            Auto refresh = 2 seconds Â· Status = {frozen}
         </div>
         """
     )
@@ -3070,7 +3388,7 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
                 return to_num(ai[name], default)
         return default
 
-    def atext(names, default="—"):
+    def atext(names, default="â€”"):
         for name in names:
             if name in ai and pd.notna(ai[name]):
                 return str(ai[name])
@@ -3129,14 +3447,14 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
     return f"""
     <details class="stock-inline-details">
         <summary>
-            <span class="stock-arrow">▶</span>
+            <span class="stock-arrow">â–¶</span>
             <span class="symbol">{html.escape(symbol)}</span>
         </summary>
 
         <div class="inline-stock-panel">
             <div class="inline-stock-top">
                 <div>
-                    <div class="inline-stock-title">{html.escape(symbol)} · LIVE ANALYSIS</div>
+                    <div class="inline-stock-title">{html.escape(symbol)} Â· LIVE ANALYSIS</div>
                     <div class="inline-stock-sub">Live values update every 2 seconds; changed values blink.</div>
                 </div>
                 <div class="inline-stock-price">{money(ltp)}</div>
@@ -3187,7 +3505,7 @@ def render_ai_analysis():
     avg_conf = float(AI_ALL["Confidence"].mean()) if not AI_ALL.empty else 0
 
     c1,c2,c3,c4 = st.columns(4)
-    stats=[("AI STOCKS",len(AI_ALL),"every ₹30–₹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
+    stats=[("AI STOCKS",len(AI_ALL),"every â‚¹30â€“â‚¹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
     for col,(lab,val,sub) in zip([c1,c2,c3,c4],stats):
         with col:
             render_html(f'<div class="ai-card"><div class="ai-label">{lab}</div><div class="ai-value">{val}</div><div class="ai-sub">{sub}</div></div>')
@@ -3195,7 +3513,7 @@ def render_ai_analysis():
     st.caption("AI analysis is generated locally from SMMA crossover, LTP trend history, market depth and ETQ. It is a paper-analysis signal, not an order sent to Angel One.")
 
     if AI_ALL.empty:
-        st.info("No ₹30–₹500 stocks available for AI analysis.")
+        st.info("No â‚¹30â€“â‚¹500 stocks available for AI analysis.")
         return
 
     search = st.text_input("Search AI stock", placeholder="RELIANCE, TCS, INFY...", key="ai_search")
@@ -3248,7 +3566,7 @@ def render_ai_analysis():
 # TRADE LOG - EVERY STOCK, PAPER ONLY
 # ============================================================
 def render_trade_log():
-    st.caption("Paper trade log only — this dashboard does not place real Angel One orders.")
+    st.caption("Paper trade log only â€” this dashboard does not place real Angel One orders.")
 
     if TRADE_LOG.empty:
         st.info("No stock records available.")
@@ -3336,7 +3654,7 @@ def render_stock_detail():
 <div class="detail-metric">ETQ 5M: <b>{qty_format(r['ETQ 5M'])}</b></div>
 <div class="detail-metric">ETQ 20M: <b>{qty_format(r['ETQ 20M'])}</b></div>
 <div class="detail-metric">ETQ 60M: <b>{qty_format(r['ETQ 60M'])}</b></div>
-<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> · Stop: <b>{money(r['Stop Loss'])}</b> · Target: <b>{money(r['Target'])}</b></div>
+<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> Â· Stop: <b>{money(r['Stop Loss'])}</b> Â· Target: <b>{money(r['Target'])}</b></div>
 <div class="detail-metric">AI Reason: {html.escape(r['Reason'])}</div>
 </div>
 """)
@@ -3476,12 +3794,12 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
                 Confidence: <b>{confidence:.0f}%</b><br>
                 Score: <b>{score:.0f}/100</b><br>
                 Trend: <b>{trend_pct:+.2f}%</b><br>
-                Reason: {html.escape(str(ai.get("Reason", "—")))}
+                Reason: {html.escape(str(ai.get("Reason", "â€”")))}
             </div>
         </div>
 
         <div class="workspace-card">
-            <div class="workspace-label">TRADE LOG · PAPER</div>
+            <div class="workspace-label">TRADE LOG Â· PAPER</div>
             <div class="workspace-title">{html.escape(selected)}</div>
             {
                 (
@@ -3521,29 +3839,16 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
         )
         render_html(f"""
         <div class="detail-box" style="margin-top:12px;">
-            <div class="detail-title">{html.escape(selected)} · LIVE LTP TREND</div>
+            <div class="detail-title">{html.escape(selected)} Â· LIVE LTP TREND</div>
             <div class="detail-sub">Latest real LTP ticks</div>
             {sparkline(vals, graph_color)}
         </div>
         """)
 
 
+
 # ============================================================
-# PAGE ROUTING
+# ONLY LIVE DASHBOARD
 # ============================================================
 
-if page == "Live Dashboard":
-
-    live_dashboard_fragment()
-
-elif page == "AI Signal Analysis":
-
-    render_ai_analysis()
-
-elif page == "Trade Log":
-
-    render_trade_log()
-
-else:
-
-    render_stock_detail()
+live_dashboard_fragment()
