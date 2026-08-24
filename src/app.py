@@ -5,7 +5,6 @@ import html
 import math
 import textwrap
 from urllib.parse import quote
-
 import pandas as pd
 import streamlit as st
 
@@ -17,7 +16,20 @@ try:
 except Exception:
     st_autorefresh = None
 
+try:
+    from supabase import create_client
+    import os
 
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+    if SUPABASE_URL and SUPABASE_KEY:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    else:
+        supabase = None
+
+except Exception:
+    supabase = None
 # ============================================================
 # PAGE
 # ============================================================
@@ -85,543 +97,826 @@ def render_html(content):
 st.markdown(
     """
 <style>
-
-/* ============================================================
-   STOCKAI — BLACK TERMINAL THEME
-   VISUAL-ONLY UPDATE: DASHBOARD LOGIC IS UNCHANGED
-   ============================================================ */
-
-:root {
-    --black: #000000;
-    --panel: #070707;
-    --panel2: #0b0b0b;
-    --panel3: #111111;
-    --border: #242424;
-    --border2: #303030;
-    --white: #f5f7fa;
-    --text: #d8dde5;
-    --muted: #7d8795;
-    --green: #18e6a4;
-    --green-bg: #06251d;
-    --red: #ff5964;
-    --red-bg: #2a0b10;
-    --yellow: #f5c84c;
-    --blue: #6e8cff;
-}
-
-/* ============================================================
-   FULL PAGE BLACK
-   ============================================================ */
-
 html,
 body,
-.stApp,
 [data-testid="stApp"],
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"],
 [data-testid="stHeader"],
-[data-testid="stDecoration"],
-section.main,
-.main,
-.block-container,
-footer {
-    background: #000000 !important;
-    background-color: #000000 !important;
-    color: var(--white) !important;
-}
-
-html,
-body,
-.stApp,
-[data-testid="stApp"] {
-    font-family:
-        Inter,
-        ui-sans-serif,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Arial,
-        sans-serif !important;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-.block-container {
-    max-width: 100% !important;
-    width: 100% !important;
-    padding: 14px 12px 42px !important;
-    margin: 0 !important;
-}
-
-[data-testid="stAppViewContainer"] > .main {
-    padding-top: 0 !important;
-    background: #000000 !important;
-}
-
-[data-testid="stMainBlockContainer"] {
-    padding-top: 12px !important;
-    background: #000000 !important;
+button,
+input,
+textarea,
+select,
+div,
+span,
+p,
+label,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "Segoe UI", Arial, sans-serif !important;
 }
 
 header[data-testid="stHeader"] {
-    background: #000000 !important;
-    height: 0 !important;
+    background:#000000 !important;
 }
 
-[data-testid="stToolbar"] {
-    display: none !important;
+.block-container {
+    max-width:100% !important;
+    width:100% !important;
+    padding:18px 12px 40px !important;
+    margin:0 !important;
+}
+
+[data-testid="stAppViewContainer"] > .main {
+    padding-top:0px !important;
+}
+
+[data-testid="stMainBlockContainer"] {
+    padding-top:20px !important;
 }
 
 section[data-testid="stSidebar"] {
-    background: #000000 !important;
+    display:none !important;
 }
 
-section[data-testid="stSidebar"] > div {
-    background: #000000 !important;
+div[data-testid="stHorizontalBlock"] {
+    gap:8px !important;
 }
 
-/* ============================================================
-   TEXT
-   ============================================================ */
-
-h1, h2, h3, h4, h5, h6 {
-    color: #ffffff !important;
+div[data-testid="stVerticalBlock"] {
+    gap:6px !important;
 }
 
-p, span, label, small {
-    color: inherit;
-}
-
-/* ============================================================
-   TOP BAR / HEADER
-   ============================================================ */
+/* ---------- TOP ---------- */
 
 .topbar {
-    background: #000000 !important;
-    border: 1px solid #171717 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 35px rgba(0,0,0,.45) !important;
+    width:100%;
+    min-height:76px;
+    box-sizing:border-box;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px;
+    margin:25px 0 14px 0;
+    border-bottom:1px solid #17233a;
+    background:#000000;
+    color:#eef4ff;
+    position:relative;
+    z-index:100;
+    transform:none;
+    opacity:1;
+    visibility:visible;
 }
 
-.brand-title,
-.logo-text {
-    color: #ffffff !important;
-    font-weight: 900 !important;
-    letter-spacing: -.3px !important;
+.brand {
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.logo {
+    width:42px;
+    height:42px;
+    border-radius:10px;
+    background:#2563eb;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:900;
+}
+
+.brand-title {
+    color:#eef4ff;
+    font-size:19px;
+    font-weight:800;
+    line-height:21px;
 }
 
 .brand-sub {
-    color: #707b89 !important;
+    color:#657592;
+    font-size:10px;
 }
 
 .clock {
-    color: #8d98a7 !important;
-    font-family: "JetBrains Mono", Consolas, monospace !important;
+    color:#70819e;
+    font-family:monospace;
+    font-size:12px;
+    position:relative;
+    top:0;
+    display:inline-block;
+}
+
+.status-live,
+.status-closed {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-left:10px;
+    padding:7px 12px;
+    border-radius:9px;
+    font-size:11px;
+    font-weight:800;
 }
 
 .status-live {
-    color: var(--green) !important;
-    background: var(--green-bg) !important;
-    border: 1px solid #0c735b !important;
+    color:#20dbaa;
+    background:#052a22;
+    border:1px solid #0b725e;
 }
 
 .status-closed {
-    color: #ff6b75 !important;
-    background: var(--red-bg) !important;
-    border: 1px solid #7d2637 !important;
+    color:#ff6971;
+    background:#2a0d17;
+    border:1px solid #7c2637;
 }
 
-/* ============================================================
-   DASHBOARD NAVIGATION
-   ============================================================ */
-
-div[data-testid="stRadio"] {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 0 12px !important;
-    overflow: visible !important;
+.blink {
+    animation:liveblink 1s infinite;
 }
 
-div[data-testid="stRadio"] > div {
-    width: 100% !important;
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 10px !important;
-    overflow: visible !important;
+.live-dot {
+    display:inline-block;
+    width:8px;
+    height:8px;
+    margin-right:7px;
+    border-radius:50%;
+    background:#20dbaa;
+    vertical-align:middle;
+    animation:livepulse 1.2s infinite;
 }
 
-div[data-testid="stRadio"] label {
-    min-width: 190px !important;
-    height: 46px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
-    background: #080808 !important;
-    border: 1px solid #292929 !important;
-    border-radius: 10px !important;
-    padding: 8px 18px !important;
-    color: #8f99a7 !important;
-    font-size: 12px !important;
-    font-weight: 800 !important;
-    white-space: nowrap !important;
-    transition: all .18s ease !important;
+.live-value {
+    transition:all .15s ease;
 }
 
-div[data-testid="stRadio"] label:hover {
-    background: #111111 !important;
-    border-color: #414141 !important;
-    color: #ffffff !important;
-    transform: translateY(-1px);
+.value-flash {
+    animation:valueflash .65s ease-out;
+    background:transparent !important;
+    color:inherit !important;
 }
 
-div[data-testid="stRadio"] label:has(input:checked) {
-    background: #071d17 !important;
-    border-color: #18b88c !important;
-    color: #18e6a4 !important;
-    box-shadow:
-        inset 0 0 0 1px rgba(24,230,164,.12),
-        0 0 20px rgba(24,230,164,.06) !important;
+
+.stock-inline-details {
+    display:block;
+    position:relative;
 }
 
-div[data-testid="stRadio"] label p,
-div[data-testid="stRadio"] label span {
-    color: inherit !important;
-    font-weight: inherit !important;
+.stock-inline-details > summary {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    cursor:pointer;
+    list-style:none;
+    outline:none;
 }
 
-/* ============================================================
-   KPI CARDS
-   ============================================================ */
-
-.kpi,
-.metric-card {
-    background: #050505 !important;
-    border: 1px solid #242424 !important;
-    border-radius: 13px !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.015) !important;
+.stock-inline-details > summary::-webkit-details-marker {
+    display:none;
 }
 
-.kpi:hover,
-.metric-card:hover {
-    border-color: #3a3a3a !important;
+.stock-inline-details > summary::marker {
+    display:none;
 }
 
-.kpi-label,
-.metric-label {
-    color: #7f8997 !important;
-    font-size: 10px !important;
-    font-weight: 900 !important;
-    letter-spacing: .08em !important;
-    text-transform: uppercase !important;
+.stock-arrow {
+    display:inline-flex;
+    width:18px;
+    height:18px;
+    align-items:center;
+    justify-content:center;
+    color:#8193b4;
+    font-size:10px;
+    font-weight:900;
+    transition:transform .12s ease, color .12s ease;
 }
 
-.kpi-value,
-.metric-value {
-    color: #ffffff !important;
-    font-weight: 950 !important;
+.stock-inline-details[open] .stock-arrow {
+    transform:rotate(90deg);
+    color:#19d3a2;
 }
 
-.kpi-sub,
-.metric-sub {
-    color: #687380 !important;
+.inline-stock-panel {
+    margin-top:12px;
+    padding:14px 16px;
+    background:#071022;
+    border:1px solid #172642;
+    border-radius:8px;
+    min-width:650px;
 }
 
-/* ============================================================
-   WORKSPACE / GENERAL CARDS
-   ============================================================ */
-
-.workspace-card,
-.ai-card,
-.detail-box,
-.live-stock-detail,
-.screen-shell {
-    background: #050505 !important;
-    border: 1px solid #242424 !important;
-    border-radius: 12px !important;
-    color: var(--text) !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,.25) !important;
+.inline-stock-top {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    margin-bottom:12px;
 }
 
-.workspace-label,
-.ai-label {
-    color: #808a98 !important;
-    font-weight: 900 !important;
-    letter-spacing: .08em !important;
+.inline-stock-title {
+    font-size:13px;
+    font-weight:800;
+    color:#eef4ff;
 }
 
-.workspace-title,
-.detail-title {
-    color: #ffffff !important;
-    font-weight: 900 !important;
+.inline-stock-sub {
+    margin-top:3px;
+    font-size:10px;
+    color:#7183a4;
 }
 
-.workspace-muted,
-.ai-sub,
-.detail-sub {
-    color: #727d8a !important;
+.inline-stock-price {
+    font-size:20px;
+    font-weight:900;
+    color:#19d3a2;
 }
 
-.workspace-value,
-.ai-buy {
-    color: var(--green) !important;
-}
-
-.ai-sell {
-    color: var(--red) !important;
-}
-
-.ai-hold {
-    color: var(--yellow) !important;
-}
-
-/* ============================================================
-   TABLES
-   ============================================================ */
-
-.stock-table,
-.ai-table,
-.trade-table {
-    background: #030303 !important;
-    color: var(--text) !important;
-}
-
-.stock-table th,
-.ai-table th,
-.trade-table th {
-    background: #0c0c0c !important;
-    color: #858f9c !important;
-    border-bottom: 1px solid #292929 !important;
-    font-weight: 900 !important;
-    text-transform: uppercase !important;
-}
-
-.stock-table td,
-.ai-table td,
-.trade-table td {
-    background: #030303 !important;
-    color: #cbd1da !important;
-    border-bottom: 1px solid #171717 !important;
-}
-
-.stock-table tr:hover td,
-.ai-table tr:hover td,
-.trade-table tr:hover td {
-    background: #0b0b0b !important;
-}
-
-.symbol,
-.stock-table .symbol {
-    color: #ffffff !important;
-    font-weight: 950 !important;
-}
-
-.company {
-    color: #717c89 !important;
-}
-
-.ltp {
-    color: #ffffff !important;
-    font-weight: 950 !important;
-}
-
-.metric {
-    color: #c5ccd5 !important;
-}
-
-.bid,
-.buy {
-    color: var(--green) !important;
-}
-
-.ask,
-.sell {
-    color: var(--red) !important;
-}
-
-/* ============================================================
-   SIGNAL PILLS
-   ============================================================ */
-
-.signal,
-.pass,
-.buy,
-.sell {
-    font-weight: 900 !important;
-}
-
-.pass,
-.buy {
-    color: var(--green) !important;
-    background: var(--green-bg) !important;
-    border: 1px solid #0c735b !important;
-}
-
-.sell {
-    color: var(--red) !important;
-    background: var(--red-bg) !important;
-    border: 1px solid #7d2637 !important;
-}
-
-/* ============================================================
-   INPUTS / SELECTS / SEARCH
-   ============================================================ */
-
-div[data-testid="stTextInput"] input,
-div[data-testid="stNumberInput"] input,
-div[data-testid="stSelectbox"] input,
-div[data-baseweb="select"] > div {
-    background: #080808 !important;
-    color: #f5f7fa !important;
-    border: 1px solid #2a2a2a !important;
-    border-radius: 9px !important;
-}
-
-div[data-testid="stTextInput"] input:focus,
-div[data-testid="stNumberInput"] input:focus {
-    border-color: #18b88c !important;
-    box-shadow: 0 0 0 1px #18b88c !important;
-}
-
-[data-testid="stWidgetLabel"] p {
-    color: #9aa3af !important;
-}
-
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-
-.stButton > button {
-    background: #090909 !important;
-    color: #e0e5eb !important;
-    border: 1px solid #2a2a2a !important;
-    border-radius: 9px !important;
-    font-weight: 800 !important;
-    transition: all .18s ease !important;
-}
-
-.stButton > button:hover {
-    background: #10251f !important;
-    color: var(--green) !important;
-    border-color: #198e70 !important;
-}
-
-.stButton > button:focus {
-    box-shadow: 0 0 0 1px #18b88c !important;
-}
-
-/* ============================================================
-   STOCK DETAIL / INLINE PANELS
-   ============================================================ */
-
-.inline-stock-panel,
-.live-detail-card {
-    background: #090909 !important;
-    border: 1px solid #282828 !important;
-    color: var(--text) !important;
+.inline-stock-metrics {
+    display:grid;
+    grid-template-columns:repeat(4, minmax(110px,1fr));
+    gap:8px;
+    margin-bottom:12px;
 }
 
 .inline-stock-metrics > div {
-    background: #0d0d0d !important;
-    border: 1px solid #242424 !important;
+    padding:8px 9px;
+    background:#09162a;
+    border:1px solid #13233d;
+    border-radius:6px;
 }
 
-.inline-stock-metrics span,
+.inline-stock-metrics span {
+    display:block;
+    font-size:9px;
+    color:#7183a4;
+    margin-bottom:3px;
+}
+
+.inline-stock-metrics b {
+    font-size:12px;
+    color:#e7eefc;
+}
+
+.inline-depth-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:42px;
+}
+
+.depth-heading {
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.4px;
+    margin-bottom:7px;
+    color:#9aaaca;
+}
+
+.bid-heading,
+.depth-bid-price {
+    color:#19d3a2;
+}
+
+.ask-heading,
+.depth-ask-price {
+    color:#ff5b62;
+}
+
+.depth-row {
+    display:flex;
+    justify-content:space-between;
+    gap:25px;
+    min-height:22px;
+    font-family:monospace;
+    font-size:11px;
+    color:#aebbd0;
+}
+
+.depth-empty,
+.detail-empty {
+    color:#667794;
+    font-size:10px;
+}
+
+
+.row-flash td {
+    animation:none !important;
+}
+.expanded-stock-row > td {
+    padding:0 !important;
+    border-top:0 !important;
+}
+
+ .expanded-stock-row .inline-depth-panel {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:48px;
+    padding:18px 36px 20px;
+    background:#071022;
+    border-top:1px solid #111d34;
+}
+
+.inline-depth-panel .depth-column {
+    min-width:0;
+}
+
+.depth-heading {
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.4px;
+    margin-bottom:8px;
+}
+
+.bid-heading {
+    color:#19d3a2;
+}
+
+.ask-heading {
+    color:#ff5b62;
+}
+
+.depth-row {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    min-height:24px;
+    font-family:monospace;
+    font-size:12px;
+    color:#aebbd0;
+}
+
+.depth-empty {
+    color:#667794;
+    font-size:11px;
+    padding:8px 0;
+}
+
+.expanded-stock-row .detail-box {
+    margin-bottom:10px;
+}
+
+
+
+.stock-expand:hover {
+    background:#10203a;
+    color:#19d3a2;
+}
+
+.workspace-grid {
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.workspace-card {
+    background:#060d20;
+    border:1px solid #18243b;
+    border-radius:11px;
+    padding:15px;
+    min-height:155px;
+}
+
+.workspace-label {
+    color:#73839e;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    margin-bottom:8px;
+}
+
+.workspace-title {
+    color:#eef3ff;
+    font-size:18px;
+    font-weight:900;
+    margin-bottom:8px;
+}
+
+.workspace-value {
+    color:#20dbaa;
+    font-size:22px;
+    font-weight:900;
+}
+
+.workspace-muted {
+    color:#7485a1;
+    font-size:11px;
+    line-height:18px;
+}
+
+.workspace-detail {
+    color:#c4cee0;
+    font-size:12px;
+    line-height:20px;
+}
+
+@media(max-width:900px) {
+    .workspace-grid {
+        grid-template-columns:1fr;
+    }
+}
+
+@keyframes livepulse {
+    0% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(32,219,170,.70); }
+    70% { opacity:.65; transform:scale(1.18); box-shadow:0 0 0 7px rgba(32,219,170,0); }
+    100% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(32,219,170,0); }
+}
+
+@keyframes valueflash {
+    0% { opacity:.35; transform:translateY(-1px); }
+    100% { opacity:1; transform:translateY(0); }
+}
+
+
+@keyframes liveblink {
+    0%,100% { opacity:1; }
+    50% { opacity:.25; }
+}
+
+/* ---------- NAV ---------- */
+
+.nav-row {
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0 12px 0;
+    margin:0;
+    position:relative;
+    z-index:20;
+    overflow:visible !important;
+}
+
+.nav-item {
+    min-width:190px;
+    height:42px;
+    box-sizing:border-box;
+    padding:10px 18px;
+    border:1px solid #18243c;
+    border-radius:9px;
+    color:#8392ad;
+    background:#050b1c;
+    text-align:center;
+    font-size:13px;
+    line-height:20px;
+    white-space:nowrap;
+}
+
+/* ---------- KPI ---------- */
+
+.kpi {
+    background:#060d20;
+    border:1px solid #18243b;
+    border-radius:12px;
+    min-height:100px;
+    padding:14px 14px;
+}
+
+.kpi-label {
+    color:#70819d;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.2px;
+}
+
+.kpi-value {
+    color:#eef4ff;
+    font-size:27px;
+    line-height:32px;
+    font-weight:900;
+    margin-top:6px;
+}
+
+.kpi-sub {
+    color:#60718e;
+    font-size:10px;
+    margin-top:3px;
+}
+
+/* ---------- SEARCH ---------- */
+
+div[data-testid="stTextInput"] input {
+    background:#050b1c !important;
+    color:#edf3ff !important;
+    border:1px solid #25334e !important;
+    border-radius:10px !important;
+    height:42px !important;
+}
+
+/* ---------- SCREEN ---------- */
+
+.screen-shell {
+    background:#060d20;
+    border:1px solid #18243b;
+    border-radius:12px 12px 0 0;
+    overflow:hidden;
+}
+
+.screen-head {
+    min-height:64px;
+    padding:0 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid #18243b;
+}
+
+.screen-title {
+    color:#edf3ff;
+    font-size:18px;
+    font-weight:900;
+}
+
+.screen-count {
+    color:#70819d;
+    font-size:11px;
+}
+
+/* ---------- TABLE ---------- */
+
+.table-scroll {
+    width:100%;
+    overflow-x:auto;
+    border-left:1px solid #18243b;
+    border-right:1px solid #18243b;
+}
+
+.stock-table {
+    width:100%;
+    min-width:1700px;
+    border-collapse:collapse;
+    table-layout:fixed;
+    background:#050b1c;
+}
+
+.stock-table th {
+    height:46px;
+    padding:0 10px;
+    text-align:left;
+    background:#091328;
+    color:#8190aa;
+    border-bottom:1px solid #26334c;
+    font-size:11px;
+    font-weight:900;
+    white-space:nowrap;
+}
+
+.stock-table td {
+    height:68px;
+    padding:7px 10px;
+    border-bottom:1px solid #17233a;
+    white-space:nowrap;
+    vertical-align:middle;
+}
+
+.stock-table tr:hover td {
+    background:#08152b;
+}
+
+
+.stock-link {
+    color:inherit;
+    text-decoration:none;
+    display:block;
+    cursor:pointer;
+}
+ .stock-expand {
+    display:inline-flex;
+    width:20px;
+    height:20px;
+    align-items:center;
+    justify-content:center;
+    margin-right:7px;
+    border:1px solid #263956;
+    border-radius:5px;
+    color:#8fa4c4;
+    background:#081226;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:900;
+    vertical-align:middle;
+}
+.stock-expand:hover {
+    color:#ffffff;
+    background:#12315a;
+    border-color:#3f79b8;
+}
+.stock-link:hover .symbol {
+    color:#4da3ff;
+    text-decoration:underline;
+}
+.live-stock-detail {
+    margin-top:14px;
+    border:1px solid #1b2b47;
+    border-radius:12px;
+    background:#050b1c;
+    padding:16px;
+}
+.live-detail-grid {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+    margin-top:12px;
+}
+.live-detail-card {
+    border:1px solid #17243c;
+    border-radius:9px;
+    padding:12px;
+    background:#071025;
+}
 .live-detail-label {
-    color: #737e8c !important;
+    color:#6f82a1;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.06em;
 }
-
-.inline-stock-metrics b,
 .live-detail-value {
-    color: #e8ecf1 !important;
+    color:#eef4ff;
+    font-size:18px;
+    font-weight:900;
+    margin-top:4px;
+}
+.live-detail-sub {
+    color:#8191ad;
+    font-size:11px;
+    margin-top:3px;
+}
+@media(max-width:900px) {
+    .live-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+.symbol {
+    color:#eef3ff;
+    font-size:16px;
+    font-weight:900;
 }
 
-.expanded-stock-row > td,
-.expanded-stock-row .inline-depth-panel {
-    background: #080808 !important;
+.company {
+    color:#62738f;
+    font-size:10px;
+    margin-top:2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
 }
 
-/* ============================================================
-   DATAFRAME / ALERTS
-   ============================================================ */
-
-[data-testid="stDataFrame"] {
-    background: #030303 !important;
-    border: 1px solid #242424 !important;
-    border-radius: 10px !important;
+.ltp {
+    font-size:17px;
+    font-weight:900;
 }
 
-div[data-testid="stAlert"] {
-    background: #080808 !important;
-    border-color: #2a2a2a !important;
-    color: #d9dee6 !important;
+.metric {
+    color:#c1ccde;
+    font-size:14px;
 }
 
-/* ============================================================
-   FOOTER
-   ============================================================ */
+.bid {
+    color:#20dbaa;
+    font-weight:800;
+    font-size:14px;
+}
+
+.ask {
+    color:#ff646c;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ---------- TREND ---------- */
+
+.trend-box {
+    width:110px;
+    height:42px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    overflow:hidden;
+    box-sizing:border-box;
+}
+
+.trend-box svg {
+    width:105px !important;
+    height:38px !important;
+    display:block;
+}
+
+.no-trend {
+    color:#53627b;
+    font-size:19px;
+}
+
+/* ---------- SIGNAL ---------- */
+
+.signal {
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:7px;
+    font-size:11px;
+    font-weight:900;
+}
+
+.pass {
+    color:#20dbaa;
+    background:#06271f;
+    border:1px solid #0b6755;
+}
+
+.buy {
+    color:#20dbaa;
+    background:#06271f;
+    border:1px solid #0b6755;
+}
+
+.sell {
+    color:#ff646c;
+    background:#2a0d17;
+    border:1px solid #7d2637;
+}
+
+/* ---------- FOOTER ---------- */
 
 .footer {
-    background: #000000 !important;
-    color: #5f6976 !important;
-    border-top: 1px solid #1b1b1b !important;
+    margin-top:18px;
+    padding:12px;
+    border-top:1px solid #17233a;
+    color:#5f708c;
+    font-size:10px;
 }
 
-/* ============================================================
-   SCROLLBAR
-   ============================================================ */
 
-* {
-    scrollbar-width: thin;
-    scrollbar-color: #3a3a3a #050505;
+/* ---------- INTERACTIVE NAV ---------- */
+.nav-caption { color:#71819d; font-size:10px; margin:2px 0 3px 4px; }
+div[data-testid="stRadio"] > div { gap:8px !important; }
+div[data-testid="stRadio"] label {
+    background:#050b1c !important;
+    border:1px solid #18243c !important;
+    border-radius:9px !important;
+    padding:8px 18px !important;
+    color:#8291ac !important;
 }
 
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/* ---------- AI ---------- */
+.ai-card { background:#060d20; border:1px solid #18243b; border-radius:11px; padding:14px; min-height:100px; }
+.ai-label { color:#70819d; font-size:10px; font-weight:800; }
+.ai-value { color:#edf3ff; font-size:24px; font-weight:900; margin-top:5px; }
+.ai-sub { color:#60718e; font-size:10px; }
+.ai-buy { color:#20dbaa; font-weight:900; }
+.ai-sell { color:#ff646c; font-weight:900; }
+.ai-hold { color:#f7c948; font-weight:900; }
+.ai-table { width:100%; border-collapse:collapse; min-width:1450px; background:#050b1c; }
+.ai-table th { background:#091328; color:#8190aa; font-size:10px; padding:11px 9px; text-align:left; border-bottom:1px solid #26334c; white-space:nowrap; }
+.ai-table td { color:#c1ccde; font-size:11px; padding:11px 9px; border-bottom:1px solid #17233a; vertical-align:top; }
+.ai-scroll { width:100%; overflow:auto; border:1px solid #18243b; border-radius:10px; }
+.score { font-weight:900; font-size:14px; }
+.reason { color:#7889a5; white-space:normal; line-height:17px; min-width:260px; }
+
+/* ---------- TRADE LOG ---------- */
+.trade-table { width:100%; border-collapse:collapse; min-width:1250px; background:#050b1c; }
+.trade-table th { background:#091328; color:#8190aa; font-size:10px; padding:11px 9px; text-align:left; border-bottom:1px solid #26334c; white-space:nowrap; }
+.trade-table td { color:#c1ccde; font-size:11px; padding:11px 9px; border-bottom:1px solid #17233a; }
+.trade-scroll { width:100%; overflow:auto; border:1px solid #18243b; border-radius:10px; }
+.paper-note { color:#647591; font-size:10px; padding:10px 0; }
+
+/* ---------- DETAIL ---------- */
+.detail-box { background:#060d20; border:1px solid #18243b; border-radius:11px; padding:15px; }
+.detail-title { color:#edf3ff; font-size:21px; font-weight:900; }
+.detail-sub { color:#687995; font-size:11px; }
+.detail-metric { color:#c3cde0; font-size:14px; padding:7px 0; border-bottom:1px solid #142038; }
+div[data-testid="stRadio"] {
+    width:100% !important;
+    margin:0 !important;
+    padding:0 0 8px 0 !important;
+    overflow:visible !important;
+    position:relative !important;
+    z-index:30 !important;
 }
 
-::-webkit-scrollbar-track {
-    background: #050505;
+div[data-testid="stRadio"] > div {
+    width:100% !important;
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    gap:10px !important;
+    overflow:visible !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #3a3a3a;
-    border-radius: 10px;
+div[data-testid="stRadio"] label {
+    min-width:190px !important;
+    height:42px !important;
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    background:#050b1c !important;
+    border:1px solid #18243c !important;
+    border-radius:9px !important;
+    padding:8px 18px !important;
+    color:#8291ac !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
 }
-
-::-webkit-scrollbar-thumb:hover {
-    background: #555555;
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-
-@media (max-width: 1000px) {
-    div[data-testid="stRadio"] > div {
-        overflow-x: auto !important;
-    }
-
-    div[data-testid="stRadio"] label {
-        min-width: 180px !important;
-    }
-}
-
-@media (max-width: 700px) {
-    .block-container {
-        padding: 10px 8px 30px !important;
-    }
-
-    div[data-testid="stRadio"] label {
-        min-width: 165px !important;
-    }
-}
-
 </style>
 """,
     unsafe_allow_html=True,
@@ -1046,6 +1341,7 @@ def sparkline(values, color):
             overflow:hidden;
             padding:3px 2px;
             box-sizing:border-box;
+            
         "
     >
         {''.join(bars)}
@@ -1149,14 +1445,322 @@ def etq_for_symbol(symbol, live):
 # LOAD DATA
 # ============================================================
 # ============================================================
-# LOAD STOCKAI PIPELINE FILES
+# LOAD DATA
 # ============================================================
 
-ai_df = read_csv(LIVE_AI)
-smma_df = read_csv(LIVE_SMMA)
-features_df = read_csv(LIVE_FEATURES)
-live = read_csv(LIVE_TICKS)
+ai_df = pd.DataFrame()
+smma_df = pd.DataFrame()
+features_df = pd.DataFrame()
+live = pd.DataFrame()
+local_ai_df = pd.DataFrame()
 
+
+# ============================================================
+# LOCAL CSV FALLBACKS
+# ============================================================
+
+try:
+    if LIVE_SMMA.exists():
+        smma_df = pd.read_csv(
+            LIVE_SMMA,
+            low_memory=False
+        )
+except Exception:
+    smma_df = pd.DataFrame()
+
+
+try:
+    if LIVE_FEATURES.exists():
+        features_df = pd.read_csv(
+            LIVE_FEATURES,
+            low_memory=False
+        )
+except Exception:
+    features_df = pd.DataFrame()
+
+
+try:
+    if LIVE_TICKS.exists():
+        live = pd.read_csv(
+            LIVE_TICKS,
+            low_memory=False
+        )
+except Exception:
+    live = pd.DataFrame()
+
+
+try:
+    if LIVE_AI.exists():
+        local_ai_df = pd.read_csv(
+            LIVE_AI,
+            low_memory=False
+        )
+except Exception:
+    local_ai_df = pd.DataFrame()
+
+
+# ============================================================
+# SUPABASE AI SIGNALS
+# ============================================================
+
+supabase_ai_df = pd.DataFrame()
+
+if supabase is not None:
+
+    try:
+
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        rows = response.data or []
+
+        if rows:
+            supabase_ai_df = pd.DataFrame(rows)
+
+    except Exception:
+        supabase_ai_df = pd.DataFrame()
+
+
+# ============================================================
+# SELECT AI SOURCE
+# ============================================================
+
+if not supabase_ai_df.empty:
+
+    ai_df = supabase_ai_df.copy()
+
+elif not local_ai_df.empty:
+
+    ai_df = local_ai_df.copy()
+
+
+# ============================================================
+# NORMALIZE COLUMN NAMES
+# ============================================================
+
+for data in (
+    ai_df,
+    smma_df,
+    features_df,
+    live,
+):
+
+    if not data.empty:
+
+        data.columns = [
+            str(c).strip()
+            for c in data.columns
+        ]
+
+
+# ============================================================
+# NORMALIZE SUPABASE COLUMN NAMES
+# ============================================================
+
+if not ai_df.empty:
+
+    rename_map = {
+
+        "symbol": "Symbol",
+
+        "ltp_live": "LTP_LIVE",
+
+        "current_ltp": "Current_LTP",
+
+        "timestamp_live": "Timestamp_LIVE",
+
+        "ltq": "LTQ",
+
+        "ltq_2min_avg": "LTQ_2min_avg",
+
+        "ltq_5min_avg": "LTQ_5min_avg",
+
+        "ltq_spike_ratio": "LTQ_Spike_Ratio",
+
+        "etq_5min": "ETQ_5min",
+
+        "etq_20min": "ETQ_20min",
+
+        "etq_60min": "ETQ_60min",
+
+        "bidqty": "BidQty",
+
+        "askqty": "AskQty",
+
+        "bidask_imbalance": "BidAsk_Imbalance",
+
+        "volume": "Volume",
+
+        "return_1": "Return_1",
+
+        "return_5": "Return_5",
+
+        "smma20_live": "smma20",
+
+        "smma120_live": "smma120",
+
+        "ml_probability": "ML_Probability",
+
+        "price_filter": "Price_Filter",
+
+        "liquidity_filter": "Liquidity_Filter",
+
+        "ltq_strong": "LTQ_Strong",
+
+        "ltq_moderate": "LTQ_Moderate",
+
+        "depth_bullish": "Depth_Bullish",
+
+        "depth_bearish": "Depth_Bearish",
+
+        "decision": "Decision",
+
+        "reason": "Reason",
+
+        "direction": "direction",
+
+        "entry_price": "entry_price",
+
+    }
+
+    ai_df = ai_df.rename(
+        columns={
+            old: new
+            for old, new in rename_map.items()
+            if old in ai_df.columns
+        }
+    )
+
+
+# ============================================================
+# GUARANTEE REQUIRED AI COLUMNS
+# ============================================================
+
+required_ai_columns = [
+
+    "Symbol",
+    "Current_LTP",
+    "LTP_LIVE",
+    "LTQ",
+    "LTQ_2min_avg",
+    "LTQ_5min_avg",
+    "LTQ_Spike_Ratio",
+    "ETQ_5min",
+    "ETQ_20min",
+    "ETQ_60min",
+    "BidQty",
+    "AskQty",
+    "BidAsk_Imbalance",
+    "Volume",
+    "Return_1",
+    "Return_5",
+    "smma20",
+    "smma120",
+    "ML_Probability",
+    "Price_Filter",
+    "Liquidity_Filter",
+    "LTQ_Strong",
+    "LTQ_Moderate",
+    "Depth_Bullish",
+    "Depth_Bearish",
+    "Decision",
+    "Reason",
+]
+
+for column in required_ai_columns:
+
+    if column not in ai_df.columns:
+
+        ai_df[column] = 0
+
+
+# ============================================================
+# SYMBOL MUST ALWAYS EXIST
+# ============================================================
+
+if "Symbol" not in ai_df.columns:
+
+    ai_df["Symbol"] = pd.Series(
+        dtype="object"
+    )
+
+else:
+
+    ai_df["Symbol"] = (
+        ai_df["Symbol"]
+        .astype(str)
+        .str.strip()
+    )
+
+
+# ============================================================
+# SAFE LIVE DATA COLUMNS
+# ============================================================
+
+for data in (
+    live,
+    smma_df,
+    features_df,
+):
+
+    if "Symbol" not in data.columns:
+
+        data["Symbol"] = pd.Series(
+            dtype="object"
+        )
+
+
+# ============================================================
+# NUMERIC CONVERSION
+# ============================================================
+
+numeric_columns = [
+
+    "Current_LTP",
+    "LTP_LIVE",
+    "LTQ",
+    "LTQ_2min_avg",
+    "LTQ_5min_avg",
+    "LTQ_Spike_Ratio",
+    "ETQ_5min",
+    "ETQ_20min",
+    "ETQ_60min",
+    "BidQty",
+    "AskQty",
+    "BidAsk_Imbalance",
+    "Volume",
+    "Return_1",
+    "Return_5",
+    "smma20",
+    "smma120",
+    "ML_Probability",
+]
+
+for column in numeric_columns:
+
+    if column in ai_df.columns:
+
+        ai_df[column] = pd.to_numeric(
+            ai_df[column],
+            errors="coerce"
+        )
+
+
+# ============================================================
+# KEEP AI DATA AVAILABLE TO THE DASHBOARD
+# ============================================================
+
+df = ai_df.copy()
+
+if "Symbol" not in df.columns:
+
+    df["Symbol"] = pd.Series(
+        dtype="object"
+    )
 # ============================================================
 # LIVE DATA STATUS
 # ============================================================
@@ -1216,19 +1820,15 @@ else:
         errors="coerce"
     )
 
-df["Signal"] = (
-    df.get("Signal", "NONE")
-    .fillna("NONE")
-    .astype(str)
-    .str.upper()
-)
+if "Signal" not in df.columns:
+    df["Signal"] = "NONE"
+else:
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-df["Decision"] = (
-    df.get("Decision", "AVOID")
-    .fillna("AVOID")
-    .astype(str)
-    .str.upper()
-)
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1313,23 +1913,38 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
-df["Signal"] = (
-    df.get("Signal", "NONE")
-    .fillna("NONE")
-    .astype(str)
-    .str.upper()
-)
+if "Signal" not in df.columns:
+    df["Signal"] = "NONE"
+else:
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-df["Decision"] = (
-    df.get("Decision", "AVOID")
-    .fillna("AVOID")
-    .astype(str)
-    .str.upper()
-)
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
-df["LTP"] = pd.to_numeric(df["LTP"], errors="coerce")
+# ============================================================
+# SAFE LTP NORMALIZATION
+# ============================================================
+
+if "Current_LTP" in df.columns:
+    df["LTP"] = pd.to_numeric(
+        df["Current_LTP"],
+        errors="coerce"
+    )
+elif "LTP" in df.columns:
+    df["LTP"] = pd.to_numeric(
+        df["LTP"],
+        errors="coerce"
+    )
+else:
+    df["LTP"] = 0.0
+
+df["LTP"] = df["LTP"].fillna(0)
+
+# ============================================================
 if "BidQty" not in df.columns:
     df["BidQty"] = 0.0
 if "AskQty" not in df.columns:
@@ -1346,6 +1961,9 @@ scanned["DepthTotal"] = scanned["BidQty"] + scanned["AskQty"]
 scanned["PASS"] = (
     scanned["DepthTotal"] >= 100_000
 )
+if "Symbol" not in scanned.columns:
+    scanned["Symbol"] = ""
+
 passed = (
     scanned[scanned["PASS"]]
     .sort_values(
@@ -1405,9 +2023,31 @@ def etq_values(symbol, row=None):
             e60 = get_value(row, "ETQ_60min", "ETQ60", default=0)
     return e5, e20, e60
 
-total_5 = sum(ETQ5.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_20 = sum(ETQ20.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_60 = sum(ETQ60.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+# ============================================================
+# SAFE ETQ TOTALS
+# ============================================================
+
+if "Symbol" in passed.columns and not passed.empty:
+    passed_symbols = passed["Symbol"].astype(str)
+
+    total_5 = sum(
+        ETQ5.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_20 = sum(
+        ETQ20.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_60 = sum(
+        ETQ60.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+else:
+    total_5 = 0
+    total_20 = 0
+    total_60 = 0
 
 # ============================================================
 # AI SIGNAL ENGINE
@@ -1533,6 +2173,15 @@ def ai_signal_for_row(row):
         "Class": cls,
     }
 
+def build_ai_analysis(scanned):
+    if scanned is None or scanned.empty:
+        return pd.DataFrame(
+            columns=[
+                "Symbol",
+                "Signal",
+                "Decision",
+            ]
+        )
 
 def build_ai_analysis(source_df):
     rows = []
@@ -1541,8 +2190,33 @@ def build_ai_analysis(source_df):
     return pd.DataFrame(rows)
 
 
+# ============================================================
+# SAFE AI ANALYSIS / PASSED FILTER
+# ============================================================
+
 AI_ALL = build_ai_analysis(scanned)
-AI_PASSED = AI_ALL[AI_ALL["Symbol"].isin(passed["Symbol"].map(clean_symbol))].copy()
+
+if not isinstance(AI_ALL, pd.DataFrame):
+    AI_ALL = pd.DataFrame()
+
+if "Symbol" not in AI_ALL.columns:
+    AI_ALL["Symbol"] = pd.Series(dtype=str)
+
+if "Symbol" not in passed.columns:
+    passed["Symbol"] = pd.Series(dtype=str)
+
+passed_symbols = (
+    passed["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+)
+
+AI_PASSED = AI_ALL[
+    AI_ALL["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+    .isin(passed_symbols)
+].copy()
 
 # ============================================================
 # PAPER TRADE LOG - ONE CURRENT RECORD PER STOCK
@@ -1608,7 +2282,14 @@ def live_top_header():
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">▥</div>
+            <div class="logo">
+                <span class="logo-bars">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                </span>
+            </div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -1628,6 +2309,10 @@ live_top_header()
 # ============================================================
 # NAV
 # ============================================================
+# ============================================================
+# NAV
+# ============================================================
+
 page = st.radio(
     "Dashboard sections",
     [
@@ -1640,7 +2325,6 @@ page = st.radio(
     label_visibility="collapsed",
     key="dashboard_page"
 )
-
 # ============================================================
 # LIVE DASHBOARD
 # ============================================================
@@ -1910,11 +2594,10 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">● LIVE · 2 SEC</span>'
+        '<span class="status-live blink">\u25CF LIVE \u00B7 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
-    )
-
+        else '<span class="status-closed">\u25CF MARKET CLOSED \u00B7 DATA FROZEN</span>'
+    )   
     # ------------------------------------------------------------
     # KPI COUNTS
     # ------------------------------------------------------------
@@ -1977,19 +2660,19 @@ def render_live_dashboard():
             "qualified stocks"
         ),
         (
-            "↗ ETQ 20M",
+            "↗  ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "↗ ETQ 60M",
+            "↗  ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
             "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15–15:30 IST"
+            "09:15\u201315:30 IST"
         )
     ]
 
@@ -2041,9 +2724,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE · 2 SEC'
+        '<span class="live-dot"></span>LIVE \u00B7 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED · DATA FROZEN"
+        else "MARKET CLOSED \u00B7 DATA FROZEN"
     )
 
     render_html(
@@ -2051,17 +2734,16 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    🎯 Qualified Stocks —
-                    LTP ₹30–₹500 · Bid/Ask &gt; 1L
+                    \U0001F3AF Qualified Stocks \u2014
+                    LTP \u20B930\u2013\u20B9500 \u00B7 Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying · {state_text}
+                    {len(view):,} qualifying \u00B7 {state_text}
                 </div>
             </div>
         </div>
         """
     )
-
     # ------------------------------------------------------------
     # TABLE
     # ------------------------------------------------------------
@@ -2344,9 +3026,7 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            Angel One · Real LTP history · 5-level market depth ·
-            AI signal engine · ETQ = real LTQ ·
-            Auto refresh = 2 seconds · Status = {frozen}
+            "Angel One \u00B7 Real LTP history \u00B7 5-level market depth \u00B7 AI signal engine \u00B7 ETQ = real LTQ \u00B7 Auto refresh = 2 seconds \u00B7 Status = FROZEN"
         </div>
         """
     )
@@ -2842,16 +3522,22 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
         """)
 
 
-
 # ============================================================
 # PAGE ROUTING
 # ============================================================
+
 if page == "Live Dashboard":
+
     live_dashboard_fragment()
-    # Selected stock details are rendered directly under the expanded row.
+
 elif page == "AI Signal Analysis":
+
     render_ai_analysis()
+
 elif page == "Trade Log":
+
     render_trade_log()
+
 else:
+
     render_stock_detail()
