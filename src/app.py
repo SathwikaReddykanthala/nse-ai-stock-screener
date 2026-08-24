@@ -170,7 +170,7 @@ div[data-testid="stVerticalBlock"] {
     width:42px;
     height:42px;
     border-radius:10px;
-    background:#2563eb;
+    background:#000000;
     color:#fff;
     display:flex;
     align-items:center;
@@ -214,13 +214,13 @@ div[data-testid="stVerticalBlock"] {
 
 .status-live {
     color:#20dbaa;
-    background:#052a22;
+    background:#000000;
     border:1px solid #0b725e;
 }
 
 .status-closed {
     color:#ff6971;
-    background:#2a0d17;
+    background:#000000;
     border:1px solid #7c2637;
 }
 
@@ -292,7 +292,7 @@ div[data-testid="stVerticalBlock"] {
 .inline-stock-panel {
     margin-top:12px;
     padding:14px 16px;
-    background:#071022;
+    background:#000000;
     border:1px solid #172642;
     border-radius:8px;
     min-width:650px;
@@ -333,7 +333,7 @@ div[data-testid="stVerticalBlock"] {
 
 .inline-stock-metrics > div {
     padding:8px 9px;
-    background:#09162a;
+    background:#000000;
     border:1px solid #13233d;
     border-radius:6px;
 }
@@ -404,7 +404,7 @@ div[data-testid="stVerticalBlock"] {
     grid-template-columns:1fr 1fr;
     gap:48px;
     padding:18px 36px 20px;
-    background:#071022;
+    background:#000000;
     border-top:1px solid #111d34;
 }
 
@@ -462,7 +462,7 @@ div[data-testid="stVerticalBlock"] {
 }
 
 .workspace-card {
-    background:#060d20;
+    background:#000000;
     border:1px solid #18243b;
     border-radius:11px;
     padding:15px;
@@ -557,7 +557,7 @@ div[data-testid="stVerticalBlock"] {
 /* ---------- KPI ---------- */
 
 .kpi {
-    background:#060d20;
+    background:#000000;
     border:1px solid #18243b;
     border-radius:12px;
     min-height:100px;
@@ -588,7 +588,7 @@ div[data-testid="stVerticalBlock"] {
 /* ---------- SEARCH ---------- */
 
 div[data-testid="stTextInput"] input {
-    background:#050b1c !important;
+    background:#000000 !important;
     color:#edf3ff !important;
     border:1px solid #25334e !important;
     border-radius:10px !important;
@@ -598,7 +598,7 @@ div[data-testid="stTextInput"] input {
 /* ---------- SCREEN ---------- */
 
 .screen-shell {
-    background:#060d20;
+    background:#000000;
     border:1px solid #18243b;
     border-radius:12px 12px 0 0;
     overflow:hidden;
