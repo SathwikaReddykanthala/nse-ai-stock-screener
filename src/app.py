@@ -1481,9 +1481,15 @@ else:
         errors="coerce"
     )
 
-if "Signal" not in df.columns:`r`n    df["Signal"] = "NONE"`r`nelse:`r`n    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+if "Signal" not in df.columns:
+    df["Signal"] = "NONE"
+else:
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-if "Decision" not in df.columns:`r`n    df["Decision"] = "AVOID"`r`nelse:`r`n    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1568,9 +1574,15 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
-if "Signal" not in df.columns:`r`n    df["Signal"] = "NONE"`r`nelse:`r`n    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+if "Signal" not in df.columns:
+    df["Signal"] = "NONE"
+else:
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-if "Decision" not in df.columns:`r`n    df["Decision"] = "AVOID"`r`nelse:`r`n    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
@@ -3100,4 +3112,5 @@ elif page == "Trade Log":
     render_trade_log()
 else:
     render_stock_detail()
+
 
