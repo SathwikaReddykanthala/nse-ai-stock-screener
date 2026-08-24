@@ -8,8 +8,6 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
-import os
-from supabase import create_client
 
 # ============================================================
 # OPTIONAL AUTO REFRESH
@@ -42,49 +40,6 @@ LIVE_FEATURES = DATASET / "live_ml_features.csv"
 LIVE_SMMA = DATASET / "live_smma.csv"
 LIVE_AI = DATASET / "live_ai_signals.csv"
 TRADE_LOG = DATASET / "live_trade_log.csv"
-# ============================================================
-# SUPABASE CONNECTION
-# ============================================================
-
-SUPABASE_URL = None
-SUPABASE_KEY = None
-
-# Local .env support
-try:
-    from dotenv import load_dotenv
-    load_dotenv(ROOT / ".env")
-except Exception:
-    pass
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-
-# Streamlit Cloud Secrets support
-try:
-    if hasattr(st, "secrets"):
-        SUPABASE_URL = st.secrets.get(
-            "SUPABASE_URL",
-            SUPABASE_URL
-        )
-
-        SUPABASE_KEY = st.secrets.get(
-            "SUPABASE_ANON_KEY",
-            SUPABASE_KEY
-        )
-except Exception:
-    pass
-
-supabase = None
-
-if SUPABASE_URL and SUPABASE_KEY:
-    try:
-        supabase = create_client(
-            SUPABASE_URL,
-            SUPABASE_KEY
-        )
-    except Exception as e:
-        print(f"Supabase connection failed: {e}")
-        supabase = None
 
 IST = ZoneInfo("Asia/Kolkata")
 MARKET_OPEN = dt_time(9, 15)
@@ -1236,19 +1191,6 @@ def load_history(live):
         errors="coerce"
     )
 
-    if "Current_LTP" in df.columns:
-            df["LTP"] = pd.to_numeric(
-                df["Current_LTP"],
-                errors="coerce"
-            )
-    else:
-            df["LTP"] = 0.0
-
-    df["LTP"] = pd.to_numeric(
-        df["LTP"],
-        errors="coerce"
-    ).fillna(0)
-
     x = x.dropna(
         subset=[
             "Symbol",
@@ -1475,59 +1417,37 @@ def etq_for_symbol(symbol, live):
 # LOAD STOCKAI PIPELINE FILES
 # ============================================================
 
+ai_df = read_csv(LIVE_AI)
+smma_df = read_csv(LIVE_SMMA)
+features_df = read_csv(LIVE_FEATURES)
+live = read_csv(LIVE_TICKS)
+
 # ============================================================
-# LOAD AI SIGNALS
+# LIVE DATA STATUS
 # ============================================================
-
-ai_df = pd.DataFrame()
-
-if supabase is not None:
-    try:
-        response = (
-            supabase
-            .table("live_ai_signals")
-            .select("*")
-            .execute()
-        )
-
-        ai_df = pd.DataFrame(response.data)
-
-        st.info(
-            f"Supabase connected. Rows received: {len(ai_df)}"
-        )
-
-    except Exception as e:
-        st.error(
-            f"Supabase read failed: {e}"
-        )
-
-else:
-    st.error(
-        "Supabase client was not created. "
-        "Check SUPABASE_URL and SUPABASE_ANON_KEY "
-        "in Streamlit Secrets."
-    )
-
-# Local fallback
-if ai_df.empty:
-    ai_df = read_csv(LIVE_AI)
 
 if ai_df.empty:
-    st.error(
-        "No AI signal data is available from Supabase "
-        "or the local CSV."
+    st.warning(
+        "Live AI signals are not currently available. "
+        "The live signal engine must be running to generate "
+        "real-time signals."
     )
-    st.stop()
+
+    ai_df = pd.DataFrame()
 
 if smma_df.empty:
     st.warning(
-        "live_smma.csv is empty or missing."
+        "Live SMMA data is not currently available."
     )
+
+    smma_df = pd.DataFrame()
 
 if features_df.empty:
     st.warning(
-        "live_ml_features.csv is empty or missing."
+        "Live ML features are not currently available."
     )
+
+    features_df = pd.DataFrame()
 
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
@@ -1541,10 +1461,14 @@ df.columns = [
 ]
 
 if "Symbol" not in df.columns:
-    st.error(
-        "live_ai_signals.csv does not contain Symbol."
+    # Keep the dashboard alive when the live engine has not produced
+    # a CSV yet (for example on Streamlit Cloud outside market hours).
+    df = pd.DataFrame(
+        columns=[
+            "Symbol", "Current_LTP", "LTP",
+            "Signal", "Decision", "BidQty", "AskQty"
+        ]
     )
-    st.stop()
 
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
@@ -1570,19 +1494,26 @@ df["Decision"] = (
     .astype(str)
     .str.upper()
 )
+
 total_stocks = len(df)
 
 price_screened = int(
     df.get(
         "Price_Filter",
-        pd.Series(False, index=df.index)
+        pd.Series(
+            False,
+            index=df.index
+        )
     ).sum()
 )
 
 liquidity_qualified = int(
     df.get(
         "Liquidity_Filter",
-        pd.Series(False, index=df.index)
+        pd.Series(
+            False,
+            index=df.index
+        )
     ).sum()
 )
 
@@ -1601,22 +1532,41 @@ accept_count = int(
 avoid_count = int(
     (df["Decision"] == "AVOID").sum()
 )
+
 # ============================================================
 # APPLY LIVE DATA / FREEZE OUTSIDE MARKET HOURS
 # ============================================================
+
 base = ai_df.copy()
 
 if IS_MARKET_OPEN:
-    df = base.copy()
-    st.session_state["last_market_snapshot"] = df.copy()
-else:
-    frozen = st.session_state.get("last_market_snapshot")
 
-    if frozen is not None and not frozen.empty:
+    df = base.copy()
+
+    st.session_state[
+        "last_market_snapshot"
+    ] = df.copy()
+
+else:
+
+    frozen = st.session_state.get(
+        "last_market_snapshot"
+    )
+
+    if (
+        frozen is not None
+        and not frozen.empty
+    ):
         df = frozen.copy()
     else:
         df = base.copy()
+
+# ============================================================
+# APPLY LIVE QUOTES
+# ============================================================
+
 if IS_MARKET_OPEN and not live.empty:
+
     df = apply_live(
         df,
         live
