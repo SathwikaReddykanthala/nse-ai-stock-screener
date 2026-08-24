@@ -1573,35 +1573,63 @@ def load_ai_signals_from_supabase():
 # LOAD DATA
 # ============================================================
 # ============================================================
-# LOAD STOCKAI PIPELINE FILES
+# LOAD DATA
 # ============================================================
 
-# ============================================================
-# LOAD AI SIGNALS
-# ============================================================
-
-# Cloud: Supabase
-# Local: CSV fallback
+# ------------------------------------------------------------
+# AI SIGNALS
+# Supabase is the primary source on Streamlit Cloud.
+# Local CSV is only a fallback.
+# ------------------------------------------------------------
 
 ai_df = load_ai_signals_from_supabase()
 
 if ai_df.empty:
     ai_df = read_csv(LIVE_AI)
 
-# Other local pipeline files
+
+# ------------------------------------------------------------
+# OTHER PIPELINE DATA
+# Always initialize these variables.
+# ------------------------------------------------------------
+
 smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
 
-if smma_df.empty:
+
+# ------------------------------------------------------------
+# SAFE EMPTY FALLBACKS
+# ------------------------------------------------------------
+
+if smma_df is None:
     smma_df = pd.DataFrame()
 
-if features_df.empty:
+if features_df is None:
     features_df = pd.DataFrame()
 
-if live.empty:
+if live is None:
     live = pd.DataFrame()
 
+
+# ============================================================
+# LIVE DATA STATUS
+# ============================================================
+
+if ai_df.empty:
+    st.warning(
+        "Live AI signals are not currently available."
+    )
+
+if smma_df.empty:
+    st.warning(
+        "Live SMMA data is not currently available."
+    )
+
+if features_df.empty:
+    st.warning(
+        "Live ML features are not currently available."
+    )
 # ============================================================
 # LIVE DATA STATUS
 # ============================================================
