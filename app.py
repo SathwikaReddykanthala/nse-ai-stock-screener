@@ -5,7 +5,6 @@ import html
 import math
 import textwrap
 from urllib.parse import quote
-
 import pandas as pd
 import streamlit as st
 
