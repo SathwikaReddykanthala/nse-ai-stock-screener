@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 import html
@@ -23,7 +23,7 @@ except Exception:
 # ============================================================
 st.set_page_config(
     page_title="NSE Stock Screener",
-    page_icon="📊",
+    page_icon="ðŸ“Š",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -957,7 +957,7 @@ def get_text(row, *names, default=""):
     return str(value)
 
 def money(value):
-    return f"₹{to_num(value):,.2f}"
+    return f"â‚¹{to_num(value):,.2f}"
 
 
 def qty_format(value):
@@ -1481,19 +1481,9 @@ else:
         errors="coerce"
     )
 
-df["Signal"] = (
-    df.get("Signal", "NONE")
-    .fillna("NONE")
-    .astype(str)
-    .str.upper()
-)
+if "Signal" not in df.columns:`r`n    df["Signal"] = "NONE"`r`nelse:`r`n    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-df["Decision"] = (
-    df.get("Decision", "AVOID")
-    .fillna("AVOID")
-    .astype(str)
-    .str.upper()
-)
+if "Decision" not in df.columns:`r`n    df["Decision"] = "AVOID"`r`nelse:`r`n    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1578,19 +1568,9 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
-df["Signal"] = (
-    df.get("Signal", "NONE")
-    .fillna("NONE")
-    .astype(str)
-    .str.upper()
-)
+if "Signal" not in df.columns:`r`n    df["Signal"] = "NONE"`r`nelse:`r`n    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-df["Decision"] = (
-    df.get("Decision", "AVOID")
-    .fillna("AVOID")
-    .astype(str)
-    .str.upper()
-)
+if "Decision" not in df.columns:`r`n    df["Decision"] = "AVOID"`r`nelse:`r`n    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
@@ -1865,15 +1845,15 @@ TRADE_LOG = update_trade_log(AI_ALL)
 def live_top_header():
     header_now = datetime.now(IST)
     header_status = (
-        '<span class="status-live blink">● LIVE · 2 SEC</span>'
+        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
         if market_is_open(header_now)
-        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
+        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
     )
 
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">▥</div>
+            <div class="logo">â–¥</div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2175,9 +2155,9 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">● LIVE · 2 SEC</span>'
+        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
+        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
     )
 
     # ------------------------------------------------------------
@@ -2227,34 +2207,34 @@ def render_live_dashboard():
 
     kpis = [
         (
-            "〽 SCANNING",
+            "ã€½ SCANNING",
             f"{scanning_count:,}",
-            "₹30–₹500 stocks"
+            "â‚¹30â€“â‚¹500 stocks"
         ),
         (
-            "▽ PASS SCREEN",
+            "â–½ PASS SCREEN",
             f"{len(passed):,}",
             "Bid + Ask > 1L"
         ),
         (
-            "↗ ETQ 5M",
+            "â†— ETQ 5M",
             qty_format(total_5),
             "qualified stocks"
         ),
         (
-            "↗ ETQ 20M",
+            "â†— ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "↗ ETQ 60M",
+            "â†— ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
-            "◉ MARKET",
+            "â—‰ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15–15:30 IST"
+            "09:15â€“15:30 IST"
         )
     ]
 
@@ -2306,9 +2286,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE · 2 SEC'
+        '<span class="live-dot"></span>LIVE Â· 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED · DATA FROZEN"
+        else "MARKET CLOSED Â· DATA FROZEN"
     )
 
     render_html(
@@ -2316,11 +2296,11 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    🎯 Qualified Stocks —
-                    LTP ₹30–₹500 · Bid/Ask &gt; 1L
+                    ðŸŽ¯ Qualified Stocks â€”
+                    LTP â‚¹30â€“â‚¹500 Â· Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying · {state_text}
+                    {len(view):,} qualifying Â· {state_text}
                 </div>
             </div>
         </div>
@@ -2609,9 +2589,9 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            Angel One · Real LTP history · 5-level market depth ·
-            AI signal engine · ETQ = real LTQ ·
-            Auto refresh = 2 seconds · Status = {frozen}
+            Angel One Â· Real LTP history Â· 5-level market depth Â·
+            AI signal engine Â· ETQ = real LTQ Â·
+            Auto refresh = 2 seconds Â· Status = {frozen}
         </div>
         """
     )
@@ -2649,7 +2629,7 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
                 return to_num(ai[name], default)
         return default
 
-    def atext(names, default="—"):
+    def atext(names, default="â€”"):
         for name in names:
             if name in ai and pd.notna(ai[name]):
                 return str(ai[name])
@@ -2708,14 +2688,14 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
     return f"""
     <details class="stock-inline-details">
         <summary>
-            <span class="stock-arrow">▶</span>
+            <span class="stock-arrow">â–¶</span>
             <span class="symbol">{html.escape(symbol)}</span>
         </summary>
 
         <div class="inline-stock-panel">
             <div class="inline-stock-top">
                 <div>
-                    <div class="inline-stock-title">{html.escape(symbol)} · LIVE ANALYSIS</div>
+                    <div class="inline-stock-title">{html.escape(symbol)} Â· LIVE ANALYSIS</div>
                     <div class="inline-stock-sub">Live values update every 2 seconds; changed values blink.</div>
                 </div>
                 <div class="inline-stock-price">{money(ltp)}</div>
@@ -2766,7 +2746,7 @@ def render_ai_analysis():
     avg_conf = float(AI_ALL["Confidence"].mean()) if not AI_ALL.empty else 0
 
     c1,c2,c3,c4 = st.columns(4)
-    stats=[("AI STOCKS",len(AI_ALL),"every ₹30–₹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
+    stats=[("AI STOCKS",len(AI_ALL),"every â‚¹30â€“â‚¹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
     for col,(lab,val,sub) in zip([c1,c2,c3,c4],stats):
         with col:
             render_html(f'<div class="ai-card"><div class="ai-label">{lab}</div><div class="ai-value">{val}</div><div class="ai-sub">{sub}</div></div>')
@@ -2774,7 +2754,7 @@ def render_ai_analysis():
     st.caption("AI analysis is generated locally from SMMA crossover, LTP trend history, market depth and ETQ. It is a paper-analysis signal, not an order sent to Angel One.")
 
     if AI_ALL.empty:
-        st.info("No ₹30–₹500 stocks available for AI analysis.")
+        st.info("No â‚¹30â€“â‚¹500 stocks available for AI analysis.")
         return
 
     search = st.text_input("Search AI stock", placeholder="RELIANCE, TCS, INFY...", key="ai_search")
@@ -2827,7 +2807,7 @@ def render_ai_analysis():
 # TRADE LOG - EVERY STOCK, PAPER ONLY
 # ============================================================
 def render_trade_log():
-    st.caption("Paper trade log only — this dashboard does not place real Angel One orders.")
+    st.caption("Paper trade log only â€” this dashboard does not place real Angel One orders.")
 
     if TRADE_LOG.empty:
         st.info("No stock records available.")
@@ -2915,7 +2895,7 @@ def render_stock_detail():
 <div class="detail-metric">ETQ 5M: <b>{qty_format(r['ETQ 5M'])}</b></div>
 <div class="detail-metric">ETQ 20M: <b>{qty_format(r['ETQ 20M'])}</b></div>
 <div class="detail-metric">ETQ 60M: <b>{qty_format(r['ETQ 60M'])}</b></div>
-<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> · Stop: <b>{money(r['Stop Loss'])}</b> · Target: <b>{money(r['Target'])}</b></div>
+<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> Â· Stop: <b>{money(r['Stop Loss'])}</b> Â· Target: <b>{money(r['Target'])}</b></div>
 <div class="detail-metric">AI Reason: {html.escape(r['Reason'])}</div>
 </div>
 """)
@@ -3055,12 +3035,12 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
                 Confidence: <b>{confidence:.0f}%</b><br>
                 Score: <b>{score:.0f}/100</b><br>
                 Trend: <b>{trend_pct:+.2f}%</b><br>
-                Reason: {html.escape(str(ai.get("Reason", "—")))}
+                Reason: {html.escape(str(ai.get("Reason", "â€”")))}
             </div>
         </div>
 
         <div class="workspace-card">
-            <div class="workspace-label">TRADE LOG · PAPER</div>
+            <div class="workspace-label">TRADE LOG Â· PAPER</div>
             <div class="workspace-title">{html.escape(selected)}</div>
             {
                 (
@@ -3100,7 +3080,7 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
         )
         render_html(f"""
         <div class="detail-box" style="margin-top:12px;">
-            <div class="detail-title">{html.escape(selected)} · LIVE LTP TREND</div>
+            <div class="detail-title">{html.escape(selected)} Â· LIVE LTP TREND</div>
             <div class="detail-sub">Latest real LTP ticks</div>
             {sparkline(vals, graph_color)}
         </div>
@@ -3120,3 +3100,4 @@ elif page == "Trade Log":
     render_trade_log()
 else:
     render_stock_detail()
+
