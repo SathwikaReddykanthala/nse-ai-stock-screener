@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 import html
@@ -24,7 +24,7 @@ except Exception:
 # ============================================================
 st.set_page_config(
     page_title="NSE Stock Screener",
-    page_icon="ðŸ“Š",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -1005,7 +1005,7 @@ def get_text(row, *names, default=""):
     return str(value)
 
 def money(value):
-    return f"â‚¹{to_num(value):,.2f}"
+    return f"₹{to_num(value):,.2f}"
 
 
 def qty_format(value):
@@ -1475,7 +1475,7 @@ live = pd.DataFrame()
 # SHOW ACTUAL PATHS
 # ------------------------------------------------------------
 
-st.write("### ðŸ” StockAI Data Loader")
+st.write("### 🔍 StockAI Data Loader")
 
 st.write("ROOT:", str(ROOT))
 st.write("DATASET:", str(DATASET))
@@ -1487,14 +1487,14 @@ st.write("DATASET:", str(DATASET))
 if not DATASET.exists():
 
     st.error(
-        f"âŒ DATASET FOLDER NOT FOUND\n\n"
+        f"❌ DATASET FOLDER NOT FOUND\n\n"
         f"Expected folder:\n{DATASET}"
     )
 
 else:
 
     st.success(
-        f"âœ… Dataset folder found:\n{DATASET}"
+        f"✅ Dataset folder found:\n{DATASET}"
     )
 
     # Show every CSV that actually exists
@@ -1511,19 +1511,19 @@ else:
                 size = file.stat().st_size
 
                 st.write(
-                    f"âœ… `{file.name}` â€” {size:,} bytes"
+                    f"✅ `{file.name}` — {size:,} bytes"
                 )
 
             except Exception:
 
                 st.write(
-                    f"âœ… `{file.name}`"
+                    f"✅ `{file.name}`"
                 )
 
     else:
 
         st.error(
-            "âŒ NO CSV FILES FOUND INSIDE DATASET FOLDER"
+            "❌ NO CSV FILES FOUND INSIDE DATASET FOLDER"
         )
 
 # ============================================================
@@ -1542,7 +1542,7 @@ def load_live_csv(path, name):
     if not path.exists():
 
         st.error(
-            f"âŒ {name} FILE NOT FOUND\n\n"
+            f"❌ {name} FILE NOT FOUND\n\n"
             f"Expected:\n{path}"
         )
 
@@ -1556,8 +1556,8 @@ def load_live_csv(path, name):
         )
 
         st.success(
-            f"âœ… {name} loaded â€” "
-            f"{len(data):,} rows Ã— {len(data.columns):,} columns"
+            f"✅ {name} loaded — "
+            f"{len(data):,} rows × {len(data.columns):,} columns"
         )
 
         if not data.empty:
@@ -1578,7 +1578,7 @@ def load_live_csv(path, name):
     except Exception as e:
 
         st.error(
-            f"âŒ {name} READ ERROR:\n{e}"
+            f"❌ {name} READ ERROR:\n{e}"
         )
 
         return pd.DataFrame()
@@ -1633,7 +1633,7 @@ supabase_ai_df = pd.DataFrame()
 if supabase is None:
 
     st.warning(
-        "âš ï¸ Supabase client is NOT initialized."
+        "⚠️ Supabase client is NOT initialized."
     )
 
     st.write(
@@ -1649,7 +1649,7 @@ if supabase is None:
 else:
 
     st.success(
-        "âœ… Supabase client initialized"
+        "✅ Supabase client initialized"
     )
 
     try:
@@ -1670,7 +1670,7 @@ else:
             )
 
             st.success(
-                "âœ… SUPABASE AI SIGNALS loaded â€” "
+                "✅ SUPABASE AI SIGNALS loaded — "
                 f"{len(supabase_ai_df):,} rows"
             )
 
@@ -1688,14 +1688,14 @@ else:
         else:
 
             st.warning(
-                "âš ï¸ Supabase table `live_ai_signals` "
+                "⚠️ Supabase table `live_ai_signals` "
                 "returned ZERO rows."
             )
 
     except Exception as e:
 
         st.error(
-            "âŒ SUPABASE READ ERROR"
+            "❌ SUPABASE READ ERROR"
         )
 
         st.exception(e)
@@ -1710,7 +1710,7 @@ if not supabase_ai_df.empty:
     ai_df = supabase_ai_df.copy()
 
     st.success(
-        "ðŸŸ¢ AI SOURCE = SUPABASE"
+        "🟢 AI SOURCE = SUPABASE"
     )
 
 elif not local_ai_df.empty:
@@ -1718,7 +1718,7 @@ elif not local_ai_df.empty:
     ai_df = local_ai_df.copy()
 
     st.success(
-        "ðŸŸ¢ AI SOURCE = LOCAL CSV"
+        "🟢 AI SOURCE = LOCAL CSV"
     )
 
 else:
@@ -1726,7 +1726,7 @@ else:
     ai_df = pd.DataFrame()
 
     st.error(
-        "ðŸ”´ NO AI SIGNAL DATA AVAILABLE"
+        "🔴 NO AI SIGNAL DATA AVAILABLE"
     )
 
 
@@ -1753,7 +1753,7 @@ for data_name, data in [
 # 8. FINAL DATA STATUS
 # ============================================================
 
-st.write("## ðŸ“Š FINAL DATA STATUS")
+st.write("## 📊 FINAL DATA STATUS")
 
 status_data = pd.DataFrame({
 
@@ -2276,15 +2276,15 @@ TRADE_LOG = update_trade_log(AI_ALL)
 def live_top_header():
     header_now = datetime.now(IST)
     header_status = (
-        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
+        '<span class="status-live blink">● LIVE · 2 SEC</span>'
         if market_is_open(header_now)
-        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
+        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
     )
 
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">â–¥</div>
+            <div class="logo">▥</div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2302,10 +2302,20 @@ def live_top_header():
 live_top_header()
 
 # ============================================================
-# ONLY LIVE DASHBOARD
+# NAV
 # ============================================================
-
-page = "Live Dashboard"
+page = st.radio(
+    "Dashboard sections",
+    [
+        "Live Dashboard",
+        "AI Signal Analysis",
+        "Trade Log",
+        "Stock Detail"
+    ],
+    horizontal=True,
+    label_visibility="collapsed",
+    key="dashboard_page"
+)
 
 # ============================================================
 # LIVE DASHBOARD
@@ -2576,9 +2586,9 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
+        '<span class="status-live blink">● LIVE · 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
+        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
     )
 
     # ------------------------------------------------------------
@@ -2628,34 +2638,34 @@ def render_live_dashboard():
 
     kpis = [
         (
-            "ã€½ SCANNING",
+            "〽 SCANNING",
             f"{scanning_count:,}",
-            "â‚¹30â€“â‚¹500 stocks"
+            "₹30–₹500 stocks"
         ),
         (
-            "â–½ PASS SCREEN",
+            "▽ PASS SCREEN",
             f"{len(passed):,}",
             "Bid + Ask > 1L"
         ),
         (
-            "â†— ETQ 5M",
+            "↗ ETQ 5M",
             qty_format(total_5),
             "qualified stocks"
         ),
         (
-            "â†— ETQ 20M",
+            "↗ ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "â†— ETQ 60M",
+            "↗ ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
-            "â—‰ MARKET",
+            "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15â€“15:30 IST"
+            "09:15–15:30 IST"
         )
     ]
 
@@ -2707,9 +2717,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE Â· 2 SEC'
+        '<span class="live-dot"></span>LIVE · 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED Â· DATA FROZEN"
+        else "MARKET CLOSED · DATA FROZEN"
     )
 
     render_html(
@@ -2717,11 +2727,11 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    ðŸŽ¯ Qualified Stocks â€”
-                    LTP â‚¹30â€“â‚¹500 Â· Bid/Ask &gt; 1L
+                    🎯 Qualified Stocks —
+                    LTP ₹30–₹500 · Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying Â· {state_text}
+                    {len(view):,} qualifying · {state_text}
                 </div>
             </div>
         </div>
@@ -3010,9 +3020,9 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            Angel One Â· Real LTP history Â· 5-level market depth Â·
-            AI signal engine Â· ETQ = real LTQ Â·
-            Auto refresh = 2 seconds Â· Status = {frozen}
+            Angel One · Real LTP history · 5-level market depth ·
+            AI signal engine · ETQ = real LTQ ·
+            Auto refresh = 2 seconds · Status = {frozen}
         </div>
         """
     )
@@ -3050,7 +3060,7 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
                 return to_num(ai[name], default)
         return default
 
-    def atext(names, default="â€”"):
+    def atext(names, default="—"):
         for name in names:
             if name in ai and pd.notna(ai[name]):
                 return str(ai[name])
@@ -3109,14 +3119,14 @@ def render_inline_stock_details(symbol, quote=None, ai=None):
     return f"""
     <details class="stock-inline-details">
         <summary>
-            <span class="stock-arrow">â–¶</span>
+            <span class="stock-arrow">▶</span>
             <span class="symbol">{html.escape(symbol)}</span>
         </summary>
 
         <div class="inline-stock-panel">
             <div class="inline-stock-top">
                 <div>
-                    <div class="inline-stock-title">{html.escape(symbol)} Â· LIVE ANALYSIS</div>
+                    <div class="inline-stock-title">{html.escape(symbol)} · LIVE ANALYSIS</div>
                     <div class="inline-stock-sub">Live values update every 2 seconds; changed values blink.</div>
                 </div>
                 <div class="inline-stock-price">{money(ltp)}</div>
@@ -3167,7 +3177,7 @@ def render_ai_analysis():
     avg_conf = float(AI_ALL["Confidence"].mean()) if not AI_ALL.empty else 0
 
     c1,c2,c3,c4 = st.columns(4)
-    stats=[("AI STOCKS",len(AI_ALL),"every â‚¹30â€“â‚¹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
+    stats=[("AI STOCKS",len(AI_ALL),"every ₹30–₹500 stock"),("BUY",buy_count,"bullish setups"),("SELL",sell_count,"bearish setups"),("AVG CONFIDENCE",f"{avg_conf:.0f}%","signal engine")]
     for col,(lab,val,sub) in zip([c1,c2,c3,c4],stats):
         with col:
             render_html(f'<div class="ai-card"><div class="ai-label">{lab}</div><div class="ai-value">{val}</div><div class="ai-sub">{sub}</div></div>')
@@ -3175,7 +3185,7 @@ def render_ai_analysis():
     st.caption("AI analysis is generated locally from SMMA crossover, LTP trend history, market depth and ETQ. It is a paper-analysis signal, not an order sent to Angel One.")
 
     if AI_ALL.empty:
-        st.info("No â‚¹30â€“â‚¹500 stocks available for AI analysis.")
+        st.info("No ₹30–₹500 stocks available for AI analysis.")
         return
 
     search = st.text_input("Search AI stock", placeholder="RELIANCE, TCS, INFY...", key="ai_search")
@@ -3228,7 +3238,7 @@ def render_ai_analysis():
 # TRADE LOG - EVERY STOCK, PAPER ONLY
 # ============================================================
 def render_trade_log():
-    st.caption("Paper trade log only â€” this dashboard does not place real Angel One orders.")
+    st.caption("Paper trade log only — this dashboard does not place real Angel One orders.")
 
     if TRADE_LOG.empty:
         st.info("No stock records available.")
@@ -3316,7 +3326,7 @@ def render_stock_detail():
 <div class="detail-metric">ETQ 5M: <b>{qty_format(r['ETQ 5M'])}</b></div>
 <div class="detail-metric">ETQ 20M: <b>{qty_format(r['ETQ 20M'])}</b></div>
 <div class="detail-metric">ETQ 60M: <b>{qty_format(r['ETQ 60M'])}</b></div>
-<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> Â· Stop: <b>{money(r['Stop Loss'])}</b> Â· Target: <b>{money(r['Target'])}</b></div>
+<div class="detail-metric">Entry: <b>{money(r['Entry'])}</b> · Stop: <b>{money(r['Stop Loss'])}</b> · Target: <b>{money(r['Target'])}</b></div>
 <div class="detail-metric">AI Reason: {html.escape(r['Reason'])}</div>
 </div>
 """)
@@ -3456,12 +3466,12 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
                 Confidence: <b>{confidence:.0f}%</b><br>
                 Score: <b>{score:.0f}/100</b><br>
                 Trend: <b>{trend_pct:+.2f}%</b><br>
-                Reason: {html.escape(str(ai.get("Reason", "â€”")))}
+                Reason: {html.escape(str(ai.get("Reason", "—")))}
             </div>
         </div>
 
         <div class="workspace-card">
-            <div class="workspace-label">TRADE LOG Â· PAPER</div>
+            <div class="workspace-label">TRADE LOG · PAPER</div>
             <div class="workspace-title">{html.escape(selected)}</div>
             {
                 (
@@ -3501,7 +3511,7 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
         )
         render_html(f"""
         <div class="detail-box" style="margin-top:12px;">
-            <div class="detail-title">{html.escape(selected)} Â· LIVE LTP TREND</div>
+            <div class="detail-title">{html.escape(selected)} · LIVE LTP TREND</div>
             <div class="detail-sub">Latest real LTP ticks</div>
             {sparkline(vals, graph_color)}
         </div>
@@ -3510,7 +3520,14 @@ def render_stock_workspace(live_df=None, source_df=None, key_prefix="workspace")
 
 
 # ============================================================
-# ONLY LIVE DASHBOARD
+# PAGE ROUTING
 # ============================================================
-
-live_dashboard_fragment()
+if page == "Live Dashboard":
+    live_dashboard_fragment()
+    # Selected stock details are rendered directly under the expanded row.
+elif page == "AI Signal Analysis":
+    render_ai_analysis()
+elif page == "Trade Log":
+    render_trade_log()
+else:
+    render_stock_detail()
