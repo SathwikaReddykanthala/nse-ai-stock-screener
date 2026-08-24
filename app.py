@@ -1419,22 +1419,21 @@ def etq_for_symbol(symbol, live):
 # Initialize every dataframe BEFORE any status checks.
 # This prevents NameError when a file is missing or when the
 # deployment is running an older/cached version of the app.
-
-# ============================================================
-# LOAD STOCKAI PIPELINE FILES - SAFE
-# ============================================================
-
-# Initialize FIRST so variables can NEVER be undefined
 ai_df = pd.DataFrame()
 smma_df = pd.DataFrame()
 features_df = pd.DataFrame()
 live = pd.DataFrame()
+# ============================================================
+# LOAD STOCKAI PIPELINE FILES - SAFE
+# ============================================================
+# ------------------------------------------------------------
+# AI SIGNALS
+# ------------------------------------------------------------
 
-# AI signals: Supabase is handled separately.
-# Local CSV is fallback.
 try:
     ai_df = load_ai_signals_from_supabase()
-except Exception:
+except Exception as e:
+    print("Supabase AI loading error:", e)
     ai_df = pd.DataFrame()
 
 if ai_df.empty:
@@ -1443,66 +1442,72 @@ if ai_df.empty:
     except Exception:
         ai_df = pd.DataFrame()
 
+# ------------------------------------------------------------
 # SMMA
+# ------------------------------------------------------------
+
 try:
     smma_df = read_csv(LIVE_SMMA)
 except Exception:
     smma_df = pd.DataFrame()
 
-# ML features
+# ------------------------------------------------------------
+# ML FEATURES
+# ------------------------------------------------------------
+
 try:
     features_df = read_csv(LIVE_FEATURES)
 except Exception:
     features_df = pd.DataFrame()
 
-# Live ticks
+# ------------------------------------------------------------
+# LIVE TICKS
+# ------------------------------------------------------------
+
 try:
     live = read_csv(LIVE_TICKS)
 except Exception:
     live = pd.DataFrame()
+# ============================================================
+# SAFE PIPELINE DATA INITIALIZATION
+# ============================================================
+
+# ALWAYS define these BEFORE ANY st.stop() or .empty check.
+ai_df = ai_df if isinstance(ai_df, pd.DataFrame) else pd.DataFrame()
+smma_df = smma_df if isinstance(smma_df, pd.DataFrame) else pd.DataFrame()
+features_df = features_df if isinstance(features_df, pd.DataFrame) else pd.DataFrame()
+live = live if isinstance(live, pd.DataFrame) else pd.DataFrame()
 
 
 # ============================================================
-# LIVE DATA STATUS
-# ============================================================
-
-# ============================================================
-# SAFE DATA INITIALIZATION
-# ============================================================
-
-# These MUST be created before any .empty check.
-if "ai_df" not in globals() or ai_df is None:
-    ai_df = pd.DataFrame()
-
-if "smma_df" not in globals() or smma_df is None:
-    smma_df = pd.DataFrame()
-
-if "features_df" not in globals() or features_df is None:
-    features_df = pd.DataFrame()
-
-if "live" not in globals() or live is None:
-    live = pd.DataFrame()
-
-
-# ============================================================
-# LIVE DATA STATUS
+# AI SIGNAL STATUS
 # ============================================================
 
 if ai_df.empty:
-    st.warning(
-        "Live AI signals are not currently available. "
-        "The live signal engine must be running to generate "
-        "real-time signals."
+    st.error(
+        "No AI signal data is available from "
+        "Supabase or the local CSV."
     )
+    st.stop()
+
+
+# ============================================================
+# OPTIONAL PIPELINE FILE STATUS
+# ============================================================
 
 if smma_df.empty:
     st.warning(
-        "Live SMMA data is not currently available."
+        "live_smma.csv is empty or missing."
     )
 
 if features_df.empty:
     st.warning(
-        "Live ML features are not currently available."
+        "live_ml_features.csv is empty or missing."
+    )
+
+if live.empty:
+    st.warning(
+        "live_ticks.csv is empty or missing."
     )
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
