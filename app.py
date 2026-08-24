@@ -1512,7 +1512,8 @@ if live.empty:
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
 # ============================================================
-
+st.write("DEBUG AI ROWS:", len(ai_df))
+st.write("DEBUG AI COLUMNS:", list(ai_df.columns))
 df = ai_df.copy()
 
 df.columns = [
@@ -1541,19 +1542,31 @@ else:
         errors="coerce"
     )
 
-df["Signal"] = (
-    df.get("Signal", "NONE")
-    .fillna("NONE")
-    .astype(str)
-    .str.upper()
-)
+# ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION
+# ============================================================
 
-df["Decision"] = (
-    df.get("Decision", "AVOID")
-    .fillna("AVOID")
-    .astype(str)
-    .str.upper()
-)
+if "Signal" not in df.columns:
+    df["Signal"] = "NONE"
+else:
+    df["Signal"] = (
+        df["Signal"]
+        .fillna("NONE")
+        .astype(str)
+        .str.upper()
+        .str.strip()
+    )
+
+if "Decision" not in df.columns:
+    df["Decision"] = "AVOID"
+else:
+    df["Decision"] = (
+        df["Decision"]
+        .fillna("AVOID")
+        .astype(str)
+        .str.upper()
+        .str.strip()
+    )
 
 total_stocks = len(df)
 
