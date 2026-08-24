@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 import html
@@ -8,7 +8,8 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
-
+import os
+from supabase import create_client
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -45,6 +46,53 @@ IST = ZoneInfo("Asia/Kolkata")
 MARKET_OPEN = dt_time(9, 15)
 MARKET_CLOSE = dt_time(15, 30)
 
+
+# ============================================================
+# SUPABASE LIVE DATA
+# ============================================================
+
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+
+supabase = None
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        )
+    except Exception:
+        supabase = None
+
+
+# ============================================================
+# LOAD LIVE AI SIGNALS FROM SUPABASE
+# ============================================================
+
+def load_supabase_ai_signals():
+    if supabase is None:
+        return pd.DataFrame()
+
+    try:
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        rows = response.data or []
+
+        if not rows:
+            return pd.DataFrame()
+
+        return pd.DataFrame(rows)
+
+    except Exception as e:
+        st.warning(f"Supabase live signal read failed: {e}")
+        return pd.DataFrame()
+    
 # ============================================================
 # MARKET STATUS
 # ============================================================
@@ -85,32 +133,14 @@ def render_html(content):
 st.markdown(
     """
 <style>
-html,
-body,
-[data-testid="stApp"],
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
-[data-testid="stMainBlockContainer"],
-[data-testid="stHeader"],
-button,
-input,
-textarea,
-select,
-div,
-span,
-p,
-label,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: "Segoe UI", Arial, sans-serif !important;
+html, body, [data-testid="stAppViewContainer"],
+[data-testid="stApp"], [data-testid="stMain"] {
+    background:#020617 !important;
+    color:#e8eefb !important;
 }
 
 header[data-testid="stHeader"] {
-    background:#000000 !important;
+    background:#020617 !important;
 }
 
 .block-container {
@@ -152,7 +182,7 @@ div[data-testid="stVerticalBlock"] {
     padding:14px 18px;
     margin:25px 0 14px 0;
     border-bottom:1px solid #17233a;
-    background:#000000;
+    background:#020617;
     color:#eef4ff;
     position:relative;
     z-index:100;
@@ -1329,7 +1359,6 @@ def sparkline(values, color):
             overflow:hidden;
             padding:3px 2px;
             box-sizing:border-box;
-            
         "
     >
         {''.join(bars)}
@@ -1430,44 +1459,363 @@ def etq_for_symbol(symbol, live):
 
 
 # ============================================================
-# LOAD DATA
-# ============================================================
-# ============================================================
-# LOAD STOCKAI PIPELINE FILES
+# LOAD DATA - FULL DIAGNOSTIC VERSION
 # ============================================================
 
-ai_df = read_csv(LIVE_AI)
-smma_df = read_csv(LIVE_SMMA)
-features_df = read_csv(LIVE_FEATURES)
-live = read_csv(LIVE_TICKS)
+# ------------------------------------------------------------
+# INITIALIZE
+# ------------------------------------------------------------
 
-# ============================================================
-# LIVE DATA STATUS
-# ============================================================
+ai_df = pd.DataFrame()
+smma_df = pd.DataFrame()
+features_df = pd.DataFrame()
+live = pd.DataFrame()
 
-if ai_df.empty:
-    st.warning(
-        "Live AI signals are not currently available. "
-        "The live signal engine must be running to generate "
-        "real-time signals."
+# ------------------------------------------------------------
+# SHOW ACTUAL PATHS
+# ------------------------------------------------------------
+
+st.write("### 🔍 StockAI Data Loader")
+
+st.write("ROOT:", str(ROOT))
+st.write("DATASET:", str(DATASET))
+
+# ------------------------------------------------------------
+# CHECK DATASET DIRECTORY
+# ------------------------------------------------------------
+
+if not DATASET.exists():
+
+    st.error(
+        f"❌ DATASET FOLDER NOT FOUND\n\n"
+        f"Expected folder:\n{DATASET}"
     )
+
+else:
+
+    st.success(
+        f"✅ Dataset folder found:\n{DATASET}"
+    )
+
+    # Show every CSV that actually exists
+    csv_files = list(DATASET.glob("*.csv"))
+
+    if csv_files:
+
+        st.write("### CSV files found:")
+
+        for file in csv_files:
+
+            try:
+
+                size = file.stat().st_size
+
+                st.write(
+                    f"✅ `{file.name}` — {size:,} bytes"
+                )
+
+            except Exception:
+
+                st.write(
+                    f"✅ `{file.name}`"
+                )
+
+    else:
+
+        st.error(
+            "❌ NO CSV FILES FOUND INSIDE DATASET FOLDER"
+        )
+
+# ============================================================
+# FUNCTION TO LOAD CSV WITH REAL ERROR
+# ============================================================
+
+def load_live_csv(path, name):
+
+    st.write(f"### Loading {name}")
+
+    st.write(
+        "Expected path:",
+        str(path)
+    )
+
+    if not path.exists():
+
+        st.error(
+            f"❌ {name} FILE NOT FOUND\n\n"
+            f"Expected:\n{path}"
+        )
+
+        return pd.DataFrame()
+
+    try:
+
+        data = pd.read_csv(
+            path,
+            low_memory=False
+        )
+
+        st.success(
+            f"✅ {name} loaded — "
+            f"{len(data):,} rows × {len(data.columns):,} columns"
+        )
+
+        if not data.empty:
+
+            st.write(
+                f"{name} columns:"
+            )
+
+            st.code(
+                ", ".join(
+                    str(c)
+                    for c in data.columns
+                )
+            )
+
+        return data
+
+    except Exception as e:
+
+        st.error(
+            f"❌ {name} READ ERROR:\n{e}"
+        )
+
+        return pd.DataFrame()
+
+
+# ============================================================
+# 1. LIVE TICKS
+# ============================================================
+
+live = load_live_csv(
+    LIVE_TICKS,
+    "LIVE TICKS"
+)
+
+
+# ============================================================
+# 2. SMMA
+# ============================================================
+
+smma_df = load_live_csv(
+    LIVE_SMMA,
+    "LIVE SMMA"
+)
+
+
+# ============================================================
+# 3. ML FEATURES
+# ============================================================
+
+features_df = load_live_csv(
+    LIVE_FEATURES,
+    "LIVE ML FEATURES"
+)
+
+
+# ============================================================
+# 4. LOCAL AI SIGNALS
+# ============================================================
+
+local_ai_df = load_live_csv(
+    LIVE_AI,
+    "LOCAL AI SIGNALS"
+)
+
+
+# ============================================================
+# 5. SUPABASE AI SIGNALS
+# ============================================================
+
+supabase_ai_df = pd.DataFrame()
+
+if supabase is None:
+
+    st.warning(
+        "⚠️ Supabase client is NOT initialized."
+    )
+
+    st.write(
+        "SUPABASE_URL configured:",
+        bool(SUPABASE_URL)
+    )
+
+    st.write(
+        "SUPABASE_KEY configured:",
+        bool(SUPABASE_KEY)
+    )
+
+else:
+
+    st.success(
+        "✅ Supabase client initialized"
+    )
+
+    try:
+
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        rows = response.data or []
+
+        if rows:
+
+            supabase_ai_df = pd.DataFrame(
+                rows
+            )
+
+            st.success(
+                "✅ SUPABASE AI SIGNALS loaded — "
+                f"{len(supabase_ai_df):,} rows"
+            )
+
+            st.write(
+                "Supabase columns:"
+            )
+
+            st.code(
+                ", ".join(
+                    str(c)
+                    for c in supabase_ai_df.columns
+                )
+            )
+
+        else:
+
+            st.warning(
+                "⚠️ Supabase table `live_ai_signals` "
+                "returned ZERO rows."
+            )
+
+    except Exception as e:
+
+        st.error(
+            "❌ SUPABASE READ ERROR"
+        )
+
+        st.exception(e)
+
+
+# ============================================================
+# 6. SELECT AI SOURCE
+# ============================================================
+
+if not supabase_ai_df.empty:
+
+    ai_df = supabase_ai_df.copy()
+
+    st.success(
+        "🟢 AI SOURCE = SUPABASE"
+    )
+
+elif not local_ai_df.empty:
+
+    ai_df = local_ai_df.copy()
+
+    st.success(
+        "🟢 AI SOURCE = LOCAL CSV"
+    )
+
+else:
 
     ai_df = pd.DataFrame()
 
+    st.error(
+        "🔴 NO AI SIGNAL DATA AVAILABLE"
+    )
+
+
+# ============================================================
+# 7. NORMALIZE COLUMN NAMES
+# ============================================================
+
+for data_name, data in [
+    ("AI", ai_df),
+    ("SMMA", smma_df),
+    ("FEATURES", features_df),
+    ("LIVE", live),
+]:
+
+    if not data.empty:
+
+        data.columns = [
+            str(c).strip()
+            for c in data.columns
+        ]
+
+
+# ============================================================
+# 8. FINAL DATA STATUS
+# ============================================================
+
+st.write("## 📊 FINAL DATA STATUS")
+
+status_data = pd.DataFrame({
+
+    "Data": [
+        "AI Signals",
+        "SMMA",
+        "ML Features",
+        "Live Ticks",
+    ],
+
+    "Rows": [
+        len(ai_df),
+        len(smma_df),
+        len(features_df),
+        len(live),
+    ],
+
+    "Status": [
+        "AVAILABLE" if not ai_df.empty else "EMPTY",
+        "AVAILABLE" if not smma_df.empty else "EMPTY",
+        "AVAILABLE" if not features_df.empty else "EMPTY",
+        "AVAILABLE" if not live.empty else "EMPTY",
+    ],
+})
+
+st.dataframe(
+    status_data,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ============================================================
+# 9. WARNINGS
+# ============================================================
+
+if ai_df.empty:
+
+    st.warning(
+        "Live AI signals are not currently available."
+    )
+
+
 if smma_df.empty:
+
     st.warning(
         "Live SMMA data is not currently available."
     )
 
-    smma_df = pd.DataFrame()
 
 if features_df.empty:
+
     st.warning(
         "Live ML features are not currently available."
     )
 
-    features_df = pd.DataFrame()
 
+if live.empty:
+
+    st.warning(
+        "Live market tick data is not currently available."
+    )
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
 # ============================================================
@@ -1489,26 +1837,47 @@ if "Symbol" not in df.columns:
         ]
     )
 
+# ============================================================
+# SAFE LTP NORMALIZATION
+# ============================================================
+
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
         df["Current_LTP"],
         errors="coerce"
     )
-else:
+elif "LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
-        df.get("LTP", 0),
+        df["LTP"],
         errors="coerce"
     )
+else:
+    df["LTP"] = 0.0
 
+df["LTP"] = df["LTP"].fillna(0)
+
+# ============================================================
+# ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
+# ============================================================
+
+# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(
+        df["Signal"],
+        index=df.index
+    ).fillna("NONE").astype(str).str.upper().str.strip()
 
+# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(
+        df["Decision"],
+        index=df.index
+    ).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1593,15 +1962,27 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
+# ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
+# ============================================================
+
+# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(
+        df["Signal"],
+        index=df.index
+    ).fillna("NONE").astype(str).str.upper().str.strip()
 
+# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(
+        df["Decision"],
+        index=df.index
+    ).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
@@ -1609,22 +1990,22 @@ else:
 # SAFE LTP NORMALIZATION
 # ============================================================
 
-if "Current_LTP" in df.columns:
-    df["LTP"] = pd.to_numeric(
-        df["Current_LTP"],
-        errors="coerce"
-    )
-elif "LTP" in df.columns:
+if "LTP" not in df.columns:
+    if "Current_LTP" in df.columns:
+        df["LTP"] = pd.to_numeric(
+            df["Current_LTP"],
+            errors="coerce"
+        )
+    else:
+        df["LTP"] = 0.0
+else:
     df["LTP"] = pd.to_numeric(
         df["LTP"],
         errors="coerce"
     )
-else:
-    df["LTP"] = 0.0
 
 df["LTP"] = df["LTP"].fillna(0)
 
-# ============================================================
 if "BidQty" not in df.columns:
     df["BidQty"] = 0.0
 if "AskQty" not in df.columns:
@@ -1641,9 +2022,6 @@ scanned["DepthTotal"] = scanned["BidQty"] + scanned["AskQty"]
 scanned["PASS"] = (
     scanned["DepthTotal"] >= 100_000
 )
-if "Symbol" not in scanned.columns:
-    scanned["Symbol"] = ""
-
 passed = (
     scanned[scanned["PASS"]]
     .sort_values(
@@ -1703,31 +2081,9 @@ def etq_values(symbol, row=None):
             e60 = get_value(row, "ETQ_60min", "ETQ60", default=0)
     return e5, e20, e60
 
-# ============================================================
-# SAFE ETQ TOTALS
-# ============================================================
-
-if "Symbol" in passed.columns and not passed.empty:
-    passed_symbols = passed["Symbol"].astype(str)
-
-    total_5 = sum(
-        ETQ5.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-
-    total_20 = sum(
-        ETQ20.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-
-    total_60 = sum(
-        ETQ60.get(clean_symbol(s), 0)
-        for s in passed_symbols
-    )
-else:
-    total_5 = 0
-    total_20 = 0
-    total_60 = 0
+total_5 = sum(ETQ5.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+total_20 = sum(ETQ20.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+total_60 = sum(ETQ60.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
 
 # ============================================================
 # AI SIGNAL ENGINE
@@ -1853,15 +2209,6 @@ def ai_signal_for_row(row):
         "Class": cls,
     }
 
-def build_ai_analysis(scanned):
-    if scanned is None or scanned.empty:
-        return pd.DataFrame(
-            columns=[
-                "Symbol",
-                "Signal",
-                "Decision",
-            ]
-        )
 
 def build_ai_analysis(source_df):
     rows = []
@@ -1870,33 +2217,8 @@ def build_ai_analysis(source_df):
     return pd.DataFrame(rows)
 
 
-# ============================================================
-# SAFE AI ANALYSIS / PASSED FILTER
-# ============================================================
-
 AI_ALL = build_ai_analysis(scanned)
-
-if not isinstance(AI_ALL, pd.DataFrame):
-    AI_ALL = pd.DataFrame()
-
-if "Symbol" not in AI_ALL.columns:
-    AI_ALL["Symbol"] = pd.Series(dtype=str)
-
-if "Symbol" not in passed.columns:
-    passed["Symbol"] = pd.Series(dtype=str)
-
-passed_symbols = (
-    passed["Symbol"]
-    .astype(str)
-    .map(clean_symbol)
-)
-
-AI_PASSED = AI_ALL[
-    AI_ALL["Symbol"]
-    .astype(str)
-    .map(clean_symbol)
-    .isin(passed_symbols)
-].copy()
+AI_PASSED = AI_ALL[AI_ALL["Symbol"].isin(passed["Symbol"].map(clean_symbol))].copy()
 
 # ============================================================
 # PAPER TRADE LOG - ONE CURRENT RECORD PER STOCK
@@ -1962,14 +2284,7 @@ def live_top_header():
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">
-                <span class="logo-bars">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                </span>
-            </div>
+            <div class="logo">▥</div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2271,10 +2586,11 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">\u25CF LIVE \u00B7 2 SEC</span>'
+        '<span class="status-live blink">● LIVE · 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">\u25CF MARKET CLOSED \u00B7 DATA FROZEN</span>'
-    )   
+        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
+    )
+
     # ------------------------------------------------------------
     # KPI COUNTS
     # ------------------------------------------------------------
@@ -2337,19 +2653,19 @@ def render_live_dashboard():
             "qualified stocks"
         ),
         (
-            "↗  ETQ 20M",
+            "↗ ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "↗  ETQ 60M",
+            "↗ ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
             "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15\u201315:30 IST"
+            "09:15–15:30 IST"
         )
     ]
 
@@ -2401,9 +2717,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE \u00B7 2 SEC'
+        '<span class="live-dot"></span>LIVE · 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED \u00B7 DATA FROZEN"
+        else "MARKET CLOSED · DATA FROZEN"
     )
 
     render_html(
@@ -2411,16 +2727,17 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    \U0001F3AF Qualified Stocks \u2014
-                    LTP \u20B930\u2013\u20B9500 \u00B7 Bid/Ask &gt; 1L
+                    🎯 Qualified Stocks —
+                    LTP ₹30–₹500 · Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying \u00B7 {state_text}
+                    {len(view):,} qualifying · {state_text}
                 </div>
             </div>
         </div>
         """
     )
+
     # ------------------------------------------------------------
     # TABLE
     # ------------------------------------------------------------
@@ -2703,7 +3020,9 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            "Angel One \u00B7 Real LTP history \u00B7 5-level market depth \u00B7 AI signal engine \u00B7 ETQ = real LTQ \u00B7 Auto refresh = 2 seconds \u00B7 Status = FROZEN"
+            Angel One · Real LTP history · 5-level market depth ·
+            AI signal engine · ETQ = real LTQ ·
+            Auto refresh = 2 seconds · Status = {frozen}
         </div>
         """
     )
@@ -3212,4 +3531,3 @@ elif page == "Trade Log":
     render_trade_log()
 else:
     render_stock_detail()
-
