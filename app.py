@@ -1537,7 +1537,30 @@ def etq_for_symbol(symbol, live):
         ].sum()
     }
 
+# ============================================================
+# LOAD AI SIGNALS FROM SUPABASE
+# ============================================================
 
+def load_ai_signals_from_supabase():
+    if supabase is None:
+        return pd.DataFrame()
+
+    try:
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .limit(5000)
+            .execute()
+        )
+
+        if response.data:
+            return pd.DataFrame(response.data)
+
+    except Exception as e:
+        print("Supabase live_ai_signals error:", e)
+
+    return pd.DataFrame()
 
 # ============================================================
 # LOAD DATA
@@ -1546,7 +1569,19 @@ def etq_for_symbol(symbol, live):
 # LOAD STOCKAI PIPELINE FILES
 # ============================================================
 
-ai_df = read_csv(LIVE_AI)
+# ============================================================
+# LOAD AI SIGNALS
+# ============================================================
+
+# Cloud: Supabase
+# Local: CSV fallback
+
+ai_df = load_ai_signals_from_supabase()
+
+if ai_df.empty:
+    ai_df = read_csv(LIVE_AI)
+
+# Other local pipeline files
 smma_df = read_csv(LIVE_SMMA)
 features_df = read_csv(LIVE_FEATURES)
 live = read_csv(LIVE_TICKS)
