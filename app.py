@@ -1549,6 +1549,11 @@ else:
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
+    # ============================================================
+# SAFE SIGNAL / DECISION NORMALIZATION
+# ============================================================
+
+if "Signal" in df.columns:
     df["Signal"] = (
         df["Signal"]
         .fillna("NONE")
@@ -1556,10 +1561,11 @@ else:
         .str.upper()
         .str.strip()
     )
-
-if "Decision" not in df.columns:
-    df["Decision"] = "AVOID"
 else:
+    df["Signal"] = "NONE"
+
+
+if "Decision" in df.columns:
     df["Decision"] = (
         df["Decision"]
         .fillna("AVOID")
@@ -1567,6 +1573,8 @@ else:
         .str.upper()
         .str.strip()
     )
+else:
+    df["Decision"] = "AVOID"
 
 total_stocks = len(df)
 
