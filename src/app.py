@@ -110,7 +110,7 @@ h6 {
 }
 
 header[data-testid="stHeader"] {
-    background:#020617 !important;
+    background:#000000 !important;
 }
 
 .block-container {
@@ -152,7 +152,7 @@ div[data-testid="stVerticalBlock"] {
     padding:14px 18px;
     margin:25px 0 14px 0;
     border-bottom:1px solid #17233a;
-    background:#020617;
+    background:#000000;
     color:#eef4ff;
     position:relative;
     z-index:100;
@@ -1329,6 +1329,7 @@ def sparkline(values, color):
             overflow:hidden;
             padding:3px 2px;
             box-sizing:border-box;
+            
         "
     >
         {''.join(bars)}
@@ -1961,7 +1962,14 @@ def live_top_header():
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">â–¥</div>
+            <div class="logo">
+                <span class="logo-bars">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                </span>
+            </div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2263,11 +2271,10 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">â— LIVE Â· 2 SEC</span>'
+        '<span class="status-live blink">\u25CF LIVE \u00B7 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">â— MARKET CLOSED Â· DATA FROZEN</span>'
-    )
-
+        else '<span class="status-closed">\u25CF MARKET CLOSED \u00B7 DATA FROZEN</span>'
+    )   
     # ------------------------------------------------------------
     # KPI COUNTS
     # ------------------------------------------------------------
@@ -2342,7 +2349,7 @@ def render_live_dashboard():
         (
             "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15â€“15:30 IST"
+            "09:15\u201315:30 IST"
         )
     ]
 
@@ -2394,9 +2401,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE Â· 2 SEC'
+        '<span class="live-dot"></span>LIVE \u00B7 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED Â· DATA FROZEN"
+        else "MARKET CLOSED \u00B7 DATA FROZEN"
     )
 
     render_html(
@@ -2404,17 +2411,16 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    ðŸŽ¯ Qualified Stocks â€”
-                    LTP â‚¹30â€“â‚¹500 Â· Bid/Ask &gt; 1L
+                    \U0001F3AF Qualified Stocks \u2014
+                    LTP \u20B930\u2013\u20B9500 \u00B7 Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying Â· {state_text}
+                    {len(view):,} qualifying \u00B7 {state_text}
                 </div>
             </div>
         </div>
         """
     )
-
     # ------------------------------------------------------------
     # TABLE
     # ------------------------------------------------------------
@@ -2697,9 +2703,7 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            Angel One Â· Real LTP history Â· 5-level market depth Â·
-            AI signal engine Â· ETQ = real LTQ Â·
-            Auto refresh = 2 seconds Â· Status = {frozen}
+            "Angel One \u00B7 Real LTP history \u00B7 5-level market depth \u00B7 AI signal engine \u00B7 ETQ = real LTQ \u00B7 Auto refresh = 2 seconds \u00B7 Status = FROZEN"
         </div>
         """
     )
