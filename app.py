@@ -85,14 +85,32 @@ def render_html(content):
 st.markdown(
     """
 <style>
-html, body, [data-testid="stAppViewContainer"],
-[data-testid="stApp"], [data-testid="stMain"] {
-    background:#020617 !important;
-    color:#e8eefb !important;
+html,
+body,
+[data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+[data-testid="stHeader"],
+button,
+input,
+textarea,
+select,
+div,
+span,
+p,
+label,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "Segoe UI", Arial, sans-serif !important;
 }
 
 header[data-testid="stHeader"] {
-    background:#020617 !important;
+    background:#000000 !important;
 }
 
 .block-container {
@@ -134,7 +152,7 @@ div[data-testid="stVerticalBlock"] {
     padding:14px 18px;
     margin:25px 0 14px 0;
     border-bottom:1px solid #17233a;
-    background:#020617;
+    background:#000000;
     color:#eef4ff;
     position:relative;
     z-index:100;
@@ -1311,6 +1329,7 @@ def sparkline(values, color):
             overflow:hidden;
             padding:3px 2px;
             box-sizing:border-box;
+            
         "
     >
         {''.join(bars)}
@@ -1414,36 +1433,13 @@ def etq_for_symbol(symbol, live):
 # LOAD DATA
 # ============================================================
 # ============================================================
-# LOAD STOCKAI PIPELINE FILES - SAFE INITIALIZATION
+# LOAD STOCKAI PIPELINE FILES
 # ============================================================
-# Initialize every dataframe BEFORE any status checks.
-# This prevents NameError when a file is missing or when the
-# deployment is running an older/cached version of the app.
 
-ai_df = pd.DataFrame()
-smma_df = pd.DataFrame()
-features_df = pd.DataFrame()
-live = pd.DataFrame()
-
-try:
-    ai_df = read_csv(LIVE_AI)
-except Exception:
-    ai_df = pd.DataFrame()
-
-try:
-    smma_df = read_csv(LIVE_SMMA)
-except Exception:
-    smma_df = pd.DataFrame()
-
-try:
-    features_df = read_csv(LIVE_FEATURES)
-except Exception:
-    features_df = pd.DataFrame()
-
-try:
-    live = read_csv(LIVE_TICKS)
-except Exception:
-    live = pd.DataFrame()
+ai_df = read_csv(LIVE_AI)
+smma_df = read_csv(LIVE_SMMA)
+features_df = read_csv(LIVE_FEATURES)
+live = read_csv(LIVE_TICKS)
 
 # ============================================================
 # LIVE DATA STATUS
@@ -1493,47 +1489,26 @@ if "Symbol" not in df.columns:
         ]
     )
 
-# ============================================================
-# SAFE LTP NORMALIZATION
-# ============================================================
-
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
         df["Current_LTP"],
         errors="coerce"
     )
-elif "LTP" in df.columns:
+else:
     df["LTP"] = pd.to_numeric(
-        df["LTP"],
+        df.get("LTP", 0),
         errors="coerce"
     )
-else:
-    df["LTP"] = 0.0
 
-df["LTP"] = df["LTP"].fillna(0)
-
-# ============================================================
-# ============================================================
-# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
-# ============================================================
-
-# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(
-        df["Signal"],
-        index=df.index
-    ).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(
-        df["Decision"],
-        index=df.index
-    ).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 
 total_stocks = len(df)
 
@@ -1618,27 +1593,15 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
-# ============================================================
-# SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
-# ============================================================
-
-# ---------------- SIGNAL ----------------
 if "Signal" not in df.columns:
     df["Signal"] = "NONE"
 else:
-    df["Signal"] = pd.Series(
-        df["Signal"],
-        index=df.index
-    ).fillna("NONE").astype(str).str.upper().str.strip()
+    df["Signal"] = pd.Series(df["Signal"], index=df.index).fillna("NONE").astype(str).str.upper().str.strip()
 
-# ---------------- DECISION ----------------
 if "Decision" not in df.columns:
     df["Decision"] = "AVOID"
 else:
-    df["Decision"] = pd.Series(
-        df["Decision"],
-        index=df.index
-    ).fillna("AVOID").astype(str).str.upper().str.strip()
+    df["Decision"] = pd.Series(df["Decision"], index=df.index).fillna("AVOID").astype(str).str.upper().str.strip()
 # ============================================================
 # NORMALIZE
 # ============================================================
@@ -1646,22 +1609,22 @@ else:
 # SAFE LTP NORMALIZATION
 # ============================================================
 
-if "LTP" not in df.columns:
-    if "Current_LTP" in df.columns:
-        df["LTP"] = pd.to_numeric(
-            df["Current_LTP"],
-            errors="coerce"
-        )
-    else:
-        df["LTP"] = 0.0
-else:
+if "Current_LTP" in df.columns:
+    df["LTP"] = pd.to_numeric(
+        df["Current_LTP"],
+        errors="coerce"
+    )
+elif "LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
         df["LTP"],
         errors="coerce"
     )
+else:
+    df["LTP"] = 0.0
 
 df["LTP"] = df["LTP"].fillna(0)
 
+# ============================================================
 if "BidQty" not in df.columns:
     df["BidQty"] = 0.0
 if "AskQty" not in df.columns:
@@ -1678,6 +1641,9 @@ scanned["DepthTotal"] = scanned["BidQty"] + scanned["AskQty"]
 scanned["PASS"] = (
     scanned["DepthTotal"] >= 100_000
 )
+if "Symbol" not in scanned.columns:
+    scanned["Symbol"] = ""
+
 passed = (
     scanned[scanned["PASS"]]
     .sort_values(
@@ -1737,9 +1703,31 @@ def etq_values(symbol, row=None):
             e60 = get_value(row, "ETQ_60min", "ETQ60", default=0)
     return e5, e20, e60
 
-total_5 = sum(ETQ5.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_20 = sum(ETQ20.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
-total_60 = sum(ETQ60.get(clean_symbol(s), 0) for s in passed["Symbol"].astype(str))
+# ============================================================
+# SAFE ETQ TOTALS
+# ============================================================
+
+if "Symbol" in passed.columns and not passed.empty:
+    passed_symbols = passed["Symbol"].astype(str)
+
+    total_5 = sum(
+        ETQ5.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_20 = sum(
+        ETQ20.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+
+    total_60 = sum(
+        ETQ60.get(clean_symbol(s), 0)
+        for s in passed_symbols
+    )
+else:
+    total_5 = 0
+    total_20 = 0
+    total_60 = 0
 
 # ============================================================
 # AI SIGNAL ENGINE
@@ -1865,6 +1853,15 @@ def ai_signal_for_row(row):
         "Class": cls,
     }
 
+def build_ai_analysis(scanned):
+    if scanned is None or scanned.empty:
+        return pd.DataFrame(
+            columns=[
+                "Symbol",
+                "Signal",
+                "Decision",
+            ]
+        )
 
 def build_ai_analysis(source_df):
     rows = []
@@ -1873,8 +1870,33 @@ def build_ai_analysis(source_df):
     return pd.DataFrame(rows)
 
 
+# ============================================================
+# SAFE AI ANALYSIS / PASSED FILTER
+# ============================================================
+
 AI_ALL = build_ai_analysis(scanned)
-AI_PASSED = AI_ALL[AI_ALL["Symbol"].isin(passed["Symbol"].map(clean_symbol))].copy()
+
+if not isinstance(AI_ALL, pd.DataFrame):
+    AI_ALL = pd.DataFrame()
+
+if "Symbol" not in AI_ALL.columns:
+    AI_ALL["Symbol"] = pd.Series(dtype=str)
+
+if "Symbol" not in passed.columns:
+    passed["Symbol"] = pd.Series(dtype=str)
+
+passed_symbols = (
+    passed["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+)
+
+AI_PASSED = AI_ALL[
+    AI_ALL["Symbol"]
+    .astype(str)
+    .map(clean_symbol)
+    .isin(passed_symbols)
+].copy()
 
 # ============================================================
 # PAPER TRADE LOG - ONE CURRENT RECORD PER STOCK
@@ -1940,7 +1962,14 @@ def live_top_header():
     render_html(f"""
     <div class="topbar">
         <div class="brand">
-            <div class="logo">▥</div>
+            <div class="logo">
+                <span class="logo-bars">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                </span>
+            </div>
             <div>
                 <div class="brand-title">StockAI</div>
                 <div class="brand-sub">SMMA Crossover AI/ML Analysis System</div>
@@ -2242,11 +2271,10 @@ def render_live_dashboard():
     ] = current_snapshot
 
     live_status = (
-        '<span class="status-live blink">● LIVE · 2 SEC</span>'
+        '<span class="status-live blink">\u25CF LIVE \u00B7 2 SEC</span>'
         if live_market_open
-        else '<span class="status-closed">● MARKET CLOSED · DATA FROZEN</span>'
-    )
-
+        else '<span class="status-closed">\u25CF MARKET CLOSED \u00B7 DATA FROZEN</span>'
+    )   
     # ------------------------------------------------------------
     # KPI COUNTS
     # ------------------------------------------------------------
@@ -2309,19 +2337,19 @@ def render_live_dashboard():
             "qualified stocks"
         ),
         (
-            "↗ ETQ 20M",
+            "↗  ETQ 20M",
             qty_format(total_20),
             "qualified stocks"
         ),
         (
-            "↗ ETQ 60M",
+            "↗  ETQ 60M",
             qty_format(total_60),
             "qualified stocks"
         ),
         (
             "◉ MARKET",
             "OPEN" if IS_MARKET_OPEN else "CLOSED",
-            "09:15–15:30 IST"
+            "09:15\u201315:30 IST"
         )
     ]
 
@@ -2373,9 +2401,9 @@ def render_live_dashboard():
     # SCREEN HEADER
     # ------------------------------------------------------------
     state_text = (
-        '<span class="live-dot"></span>LIVE · 2 SEC'
+        '<span class="live-dot"></span>LIVE \u00B7 2 SEC'
         if IS_MARKET_OPEN
-        else "MARKET CLOSED · DATA FROZEN"
+        else "MARKET CLOSED \u00B7 DATA FROZEN"
     )
 
     render_html(
@@ -2383,17 +2411,16 @@ def render_live_dashboard():
         <div class="screen-shell">
             <div class="screen-head">
                 <div class="screen-title">
-                    🎯 Qualified Stocks —
-                    LTP ₹30–₹500 · Bid/Ask &gt; 1L
+                    \U0001F3AF Qualified Stocks \u2014
+                    LTP \u20B930\u2013\u20B9500 \u00B7 Bid/Ask &gt; 1L
                 </div>
                 <div class="screen-count">
-                    {len(view):,} qualifying · {state_text}
+                    {len(view):,} qualifying \u00B7 {state_text}
                 </div>
             </div>
         </div>
         """
     )
-
     # ------------------------------------------------------------
     # TABLE
     # ------------------------------------------------------------
@@ -2676,9 +2703,7 @@ def render_live_dashboard():
         </div>
 
         <div class="footer">
-            Angel One · Real LTP history · 5-level market depth ·
-            AI signal engine · ETQ = real LTQ ·
-            Auto refresh = 2 seconds · Status = {frozen}
+            "Angel One \u00B7 Real LTP history \u00B7 5-level market depth \u00B7 AI signal engine \u00B7 ETQ = real LTQ \u00B7 Auto refresh = 2 seconds \u00B7 Status = FROZEN"
         </div>
         """
     )
@@ -3187,3 +3212,4 @@ elif page == "Trade Log":
     render_trade_log()
 else:
     render_stock_detail()
+
