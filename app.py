@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
-
+st.write("APP VERSION: SIGNAL-FIX-2026-08-24")
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
