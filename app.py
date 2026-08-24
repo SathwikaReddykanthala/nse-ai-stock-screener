@@ -157,6 +157,13 @@ except Exception as e:
 
     supabase = None
     supabase_error = str(e)
+
+st.write("SUPABASE_URL present:", bool(SUPABASE_URL))
+st.write("SUPABASE_ANON_KEY present:", bool(SUPABASE_ANON_KEY))
+st.write("SUPABASE client created:", supabase is not None)
+
+if supabase_error:
+    st.error(f"Supabase error: {supabase_error}")
 # ============================================================
 # PATHS
 # ============================================================
