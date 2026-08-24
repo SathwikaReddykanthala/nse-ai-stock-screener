@@ -1432,14 +1432,322 @@ def etq_for_symbol(symbol, live):
 # LOAD DATA
 # ============================================================
 # ============================================================
-# LOAD STOCKAI PIPELINE FILES
+# LOAD DATA
 # ============================================================
 
-ai_df = read_csv(LIVE_AI)
-smma_df = read_csv(LIVE_SMMA)
-features_df = read_csv(LIVE_FEATURES)
-live = read_csv(LIVE_TICKS)
+ai_df = pd.DataFrame()
+smma_df = pd.DataFrame()
+features_df = pd.DataFrame()
+live = pd.DataFrame()
+local_ai_df = pd.DataFrame()
 
+
+# ============================================================
+# LOCAL CSV FALLBACKS
+# ============================================================
+
+try:
+    if LIVE_SMMA.exists():
+        smma_df = pd.read_csv(
+            LIVE_SMMA,
+            low_memory=False
+        )
+except Exception:
+    smma_df = pd.DataFrame()
+
+
+try:
+    if LIVE_FEATURES.exists():
+        features_df = pd.read_csv(
+            LIVE_FEATURES,
+            low_memory=False
+        )
+except Exception:
+    features_df = pd.DataFrame()
+
+
+try:
+    if LIVE_TICKS.exists():
+        live = pd.read_csv(
+            LIVE_TICKS,
+            low_memory=False
+        )
+except Exception:
+    live = pd.DataFrame()
+
+
+try:
+    if LIVE_AI.exists():
+        local_ai_df = pd.read_csv(
+            LIVE_AI,
+            low_memory=False
+        )
+except Exception:
+    local_ai_df = pd.DataFrame()
+
+
+# ============================================================
+# SUPABASE AI SIGNALS
+# ============================================================
+
+supabase_ai_df = pd.DataFrame()
+
+if supabase is not None:
+
+    try:
+
+        response = (
+            supabase
+            .table("live_ai_signals")
+            .select("*")
+            .execute()
+        )
+
+        rows = response.data or []
+
+        if rows:
+            supabase_ai_df = pd.DataFrame(rows)
+
+    except Exception:
+        supabase_ai_df = pd.DataFrame()
+
+
+# ============================================================
+# SELECT AI SOURCE
+# ============================================================
+
+if not supabase_ai_df.empty:
+
+    ai_df = supabase_ai_df.copy()
+
+elif not local_ai_df.empty:
+
+    ai_df = local_ai_df.copy()
+
+
+# ============================================================
+# NORMALIZE COLUMN NAMES
+# ============================================================
+
+for data in (
+    ai_df,
+    smma_df,
+    features_df,
+    live,
+):
+
+    if not data.empty:
+
+        data.columns = [
+            str(c).strip()
+            for c in data.columns
+        ]
+
+
+# ============================================================
+# NORMALIZE SUPABASE COLUMN NAMES
+# ============================================================
+
+if not ai_df.empty:
+
+    rename_map = {
+
+        "symbol": "Symbol",
+
+        "ltp_live": "LTP_LIVE",
+
+        "current_ltp": "Current_LTP",
+
+        "timestamp_live": "Timestamp_LIVE",
+
+        "ltq": "LTQ",
+
+        "ltq_2min_avg": "LTQ_2min_avg",
+
+        "ltq_5min_avg": "LTQ_5min_avg",
+
+        "ltq_spike_ratio": "LTQ_Spike_Ratio",
+
+        "etq_5min": "ETQ_5min",
+
+        "etq_20min": "ETQ_20min",
+
+        "etq_60min": "ETQ_60min",
+
+        "bidqty": "BidQty",
+
+        "askqty": "AskQty",
+
+        "bidask_imbalance": "BidAsk_Imbalance",
+
+        "volume": "Volume",
+
+        "return_1": "Return_1",
+
+        "return_5": "Return_5",
+
+        "smma20_live": "smma20",
+
+        "smma120_live": "smma120",
+
+        "ml_probability": "ML_Probability",
+
+        "price_filter": "Price_Filter",
+
+        "liquidity_filter": "Liquidity_Filter",
+
+        "ltq_strong": "LTQ_Strong",
+
+        "ltq_moderate": "LTQ_Moderate",
+
+        "depth_bullish": "Depth_Bullish",
+
+        "depth_bearish": "Depth_Bearish",
+
+        "decision": "Decision",
+
+        "reason": "Reason",
+
+        "direction": "direction",
+
+        "entry_price": "entry_price",
+
+    }
+
+    ai_df = ai_df.rename(
+        columns={
+            old: new
+            for old, new in rename_map.items()
+            if old in ai_df.columns
+        }
+    )
+
+
+# ============================================================
+# GUARANTEE REQUIRED AI COLUMNS
+# ============================================================
+
+required_ai_columns = [
+
+    "Symbol",
+    "Current_LTP",
+    "LTP_LIVE",
+    "LTQ",
+    "LTQ_2min_avg",
+    "LTQ_5min_avg",
+    "LTQ_Spike_Ratio",
+    "ETQ_5min",
+    "ETQ_20min",
+    "ETQ_60min",
+    "BidQty",
+    "AskQty",
+    "BidAsk_Imbalance",
+    "Volume",
+    "Return_1",
+    "Return_5",
+    "smma20",
+    "smma120",
+    "ML_Probability",
+    "Price_Filter",
+    "Liquidity_Filter",
+    "LTQ_Strong",
+    "LTQ_Moderate",
+    "Depth_Bullish",
+    "Depth_Bearish",
+    "Decision",
+    "Reason",
+]
+
+for column in required_ai_columns:
+
+    if column not in ai_df.columns:
+
+        ai_df[column] = 0
+
+
+# ============================================================
+# SYMBOL MUST ALWAYS EXIST
+# ============================================================
+
+if "Symbol" not in ai_df.columns:
+
+    ai_df["Symbol"] = pd.Series(
+        dtype="object"
+    )
+
+else:
+
+    ai_df["Symbol"] = (
+        ai_df["Symbol"]
+        .astype(str)
+        .str.strip()
+    )
+
+
+# ============================================================
+# SAFE LIVE DATA COLUMNS
+# ============================================================
+
+for data in (
+    live,
+    smma_df,
+    features_df,
+):
+
+    if "Symbol" not in data.columns:
+
+        data["Symbol"] = pd.Series(
+            dtype="object"
+        )
+
+
+# ============================================================
+# NUMERIC CONVERSION
+# ============================================================
+
+numeric_columns = [
+
+    "Current_LTP",
+    "LTP_LIVE",
+    "LTQ",
+    "LTQ_2min_avg",
+    "LTQ_5min_avg",
+    "LTQ_Spike_Ratio",
+    "ETQ_5min",
+    "ETQ_20min",
+    "ETQ_60min",
+    "BidQty",
+    "AskQty",
+    "BidAsk_Imbalance",
+    "Volume",
+    "Return_1",
+    "Return_5",
+    "smma20",
+    "smma120",
+    "ML_Probability",
+]
+
+for column in numeric_columns:
+
+    if column in ai_df.columns:
+
+        ai_df[column] = pd.to_numeric(
+            ai_df[column],
+            errors="coerce"
+        )
+
+
+# ============================================================
+# KEEP AI DATA AVAILABLE TO THE DASHBOARD
+# ============================================================
+
+df = ai_df.copy()
+
+if "Symbol" not in df.columns:
+
+    df["Symbol"] = pd.Series(
+        dtype="object"
+    )
 # ============================================================
 # LIVE DATA STATUS
 # ============================================================
