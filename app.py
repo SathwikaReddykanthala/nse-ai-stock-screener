@@ -1493,17 +1493,26 @@ if "Symbol" not in df.columns:
         ]
     )
 
+# ============================================================
+# SAFE LTP NORMALIZATION
+# ============================================================
+
 if "Current_LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
         df["Current_LTP"],
         errors="coerce"
     )
-else:
+elif "LTP" in df.columns:
     df["LTP"] = pd.to_numeric(
-        df.get("LTP", 0),
+        df["LTP"],
         errors="coerce"
     )
+else:
+    df["LTP"] = 0.0
 
+df["LTP"] = df["LTP"].fillna(0)
+
+# ============================================================
 # ============================================================
 # SAFE SIGNAL / DECISION NORMALIZATION AFTER LIVE UPDATE
 # ============================================================
