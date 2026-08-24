@@ -1721,9 +1721,33 @@ for data in (
 # ============================================================
 # NUMERIC CONVERSION
 # ============================================================
+# ============================================================
+# REMOVE DUPLICATE AI COLUMN NAMES
+# MUST HAPPEN BEFORE NUMERIC CONVERSION
+# ============================================================
+
+if ai_df.columns.duplicated().any():
+
+    duplicate_columns = ai_df.columns[
+        ai_df.columns.duplicated()
+    ].tolist()
+
+    print(
+        "Duplicate AI columns found:",
+        duplicate_columns
+    )
+
+    ai_df = ai_df.loc[
+        :,
+        ~ai_df.columns.duplicated(keep="first")
+    ].copy()
+
+
+# ============================================================
+# NUMERIC CONVERSION
+# ============================================================
 
 numeric_columns = [
-
     "Current_LTP",
     "LTP_LIVE",
     "LTQ",
@@ -1752,9 +1776,9 @@ for column in numeric_columns:
             ai_df[column],
             errors="coerce"
         )
-
 # ============================================================
 # REMOVE DUPLICATE AI COLUMN NAMES
+# MUST HAPPEN BEFORE NUMERIC CONVERSION
 # ============================================================
 
 if ai_df.columns.duplicated().any():
