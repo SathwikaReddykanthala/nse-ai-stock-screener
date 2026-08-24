@@ -1,6 +1,7 @@
-from pathlib import Path
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
+from pathlib import Path
+import os
 import html
 import math
 import textwrap
@@ -9,6 +10,17 @@ from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 
+try:
+    from supabase import create_client, Client
+except Exception:
+    create_client = None
+    Client = None
+
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -16,7 +28,57 @@ try:
     from streamlit_autorefresh import st_autorefresh
 except Exception:
     st_autorefresh = None
+# ============================================================
+# SUPABASE CONNECTION
+# ============================================================
+from supabase import create_client, Client
 
+supabase: Client | None = None
+supabase_error = None
+
+try:
+    # Streamlit Cloud
+    if hasattr(st, "secrets"):
+        SUPABASE_URL = str(
+            st.secrets.get("SUPABASE_URL", "")
+        ).strip()
+
+        SUPABASE_ANON_KEY = str(
+            st.secrets.get("SUPABASE_ANON_KEY", "")
+        ).strip()
+    else:
+        SUPABASE_URL = ""
+        SUPABASE_ANON_KEY = ""
+
+    # Local fallback
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        SUPABASE_URL = os.getenv(
+            "SUPABASE_URL",
+            SUPABASE_URL
+        ).strip()
+
+        SUPABASE_ANON_KEY = os.getenv(
+            "SUPABASE_ANON_KEY",
+            SUPABASE_ANON_KEY
+        ).strip()
+
+    if not SUPABASE_URL:
+        raise RuntimeError("SUPABASE_URL is empty")
+
+    if not SUPABASE_ANON_KEY:
+        raise RuntimeError("SUPABASE_ANON_KEY is empty")
+
+    supabase = create_client(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+    )
+
+except Exception as e:
+    supabase = None
+    supabase_error = str(e)
 
 # ============================================================
 # PAGE
@@ -27,7 +89,74 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+# ============================================================
+# SUPABASE CONNECTION
+# ============================================================
 
+supabase = None
+supabase_error = None
+
+try:
+
+    SUPABASE_URL = ""
+    SUPABASE_ANON_KEY = ""
+
+    # Streamlit Cloud
+    try:
+        SUPABASE_URL = str(
+            st.secrets.get("SUPABASE_URL", "")
+        ).strip()
+
+        SUPABASE_ANON_KEY = str(
+            st.secrets.get("SUPABASE_ANON_KEY", "")
+        ).strip()
+
+    except Exception:
+        pass
+
+    # Local .env fallback
+    if (
+        not SUPABASE_URL
+        or not SUPABASE_ANON_KEY
+    ):
+
+        if load_dotenv is not None:
+            load_dotenv()
+
+        SUPABASE_URL = os.getenv(
+            "SUPABASE_URL",
+            SUPABASE_URL
+        ).strip()
+
+        SUPABASE_ANON_KEY = os.getenv(
+            "SUPABASE_ANON_KEY",
+            SUPABASE_ANON_KEY
+        ).strip()
+
+    if create_client is None:
+        raise RuntimeError(
+            "supabase package is not installed"
+        )
+
+    if not SUPABASE_URL:
+        raise RuntimeError(
+            "SUPABASE_URL is empty"
+        )
+
+    if not SUPABASE_ANON_KEY:
+        raise RuntimeError(
+            "SUPABASE_ANON_KEY is empty"
+        )
+
+    supabase = create_client(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+    )
+
+except Exception as e:
+
+    supabase = None
+    supabase_error = str(e)
 # ============================================================
 # PATHS
 # ============================================================
