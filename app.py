@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
-st.write("APP VERSION: SIGNAL-FIX-2026-08-24")
+
 # ============================================================
 # OPTIONAL AUTO REFRESH
 # ============================================================
@@ -1419,101 +1419,63 @@ def etq_for_symbol(symbol, live):
 # Initialize every dataframe BEFORE any status checks.
 # This prevents NameError when a file is missing or when the
 # deployment is running an older/cached version of the app.
+
 ai_df = pd.DataFrame()
 smma_df = pd.DataFrame()
 features_df = pd.DataFrame()
 live = pd.DataFrame()
-# ============================================================
-# LOAD STOCKAI PIPELINE FILES - SAFE
-# ============================================================
-# ------------------------------------------------------------
-# AI SIGNALS
-# ------------------------------------------------------------
 
 try:
-    ai_df = load_ai_signals_from_supabase()
-except Exception as e:
-    print("Supabase AI loading error:", e)
+    ai_df = read_csv(LIVE_AI)
+except Exception:
     ai_df = pd.DataFrame()
-
-if ai_df.empty:
-    try:
-        ai_df = read_csv(LIVE_AI)
-    except Exception:
-        ai_df = pd.DataFrame()
-
-# ------------------------------------------------------------
-# SMMA
-# ------------------------------------------------------------
 
 try:
     smma_df = read_csv(LIVE_SMMA)
 except Exception:
     smma_df = pd.DataFrame()
 
-# ------------------------------------------------------------
-# ML FEATURES
-# ------------------------------------------------------------
-
 try:
     features_df = read_csv(LIVE_FEATURES)
 except Exception:
     features_df = pd.DataFrame()
 
-# ------------------------------------------------------------
-# LIVE TICKS
-# ------------------------------------------------------------
-
 try:
     live = read_csv(LIVE_TICKS)
 except Exception:
     live = pd.DataFrame()
-# ============================================================
-# SAFE PIPELINE DATA INITIALIZATION
-# ============================================================
-
-# ALWAYS define these BEFORE ANY st.stop() or .empty check.
-ai_df = ai_df if isinstance(ai_df, pd.DataFrame) else pd.DataFrame()
-smma_df = smma_df if isinstance(smma_df, pd.DataFrame) else pd.DataFrame()
-features_df = features_df if isinstance(features_df, pd.DataFrame) else pd.DataFrame()
-live = live if isinstance(live, pd.DataFrame) else pd.DataFrame()
-
 
 # ============================================================
-# AI SIGNAL STATUS
+# LIVE DATA STATUS
 # ============================================================
 
 if ai_df.empty:
-    st.error(
-        "No AI signal data is available from "
-        "Supabase or the local CSV."
+    st.warning(
+        "Live AI signals are not currently available. "
+        "The live signal engine must be running to generate "
+        "real-time signals."
     )
-    st.stop()
 
-
-# ============================================================
-# OPTIONAL PIPELINE FILE STATUS
-# ============================================================
+    ai_df = pd.DataFrame()
 
 if smma_df.empty:
     st.warning(
-        "live_smma.csv is empty or missing."
+        "Live SMMA data is not currently available."
     )
+
+    smma_df = pd.DataFrame()
 
 if features_df.empty:
     st.warning(
-        "live_ml_features.csv is empty or missing."
+        "Live ML features are not currently available."
     )
 
-if live.empty:
-    st.warning(
-        "live_ticks.csv is empty or missing."
-    )
+    features_df = pd.DataFrame()
+
 # ============================================================
 # NORMALIZE AI SIGNAL DATA
 # ============================================================
-st.write("DEBUG AI ROWS:", len(ai_df))
-st.write("DEBUG AI COLUMNS:", list(ai_df.columns))
+
 df = ai_df.copy()
 
 df.columns = [
@@ -1542,43 +1504,19 @@ else:
         errors="coerce"
     )
 
-# ============================================================
-# SAFE SIGNAL / DECISION NORMALIZATION
-# ============================================================
+df["Signal"] = (
+    df.get("Signal", "NONE")
+    .fillna("NONE")
+    .astype(str)
+    .str.upper()
+)
 
-# ============================================================
-# SIGNAL / DECISION NORMALIZATION
-# ============================================================
-
-if "Signal" not in df.columns:
-    df["Signal"] = "NONE"
-else:
-    df["Signal"] = df["Signal"].fillna("NONE")
-
-df["Signal"] = df["Signal"].astype(str).str.upper().str.strip()
-
-
-if "Decision" not in df.columns:
-    df["Decision"] = "AVOID"
-else:
-    df["Decision"] = df["Decision"].fillna("AVOID")
-
-df["Decision"] = df["Decision"].astype(str).str.upper().str.strip()
-#============================================================
-# SAFE SIGNAL / DECISION NORMALIZATION
-# ============================================================
-
-if "Signal" in df.columns:
-    df["Signal"] = df["Signal"].fillna("NONE").astype(str).str.upper().str.strip()
-else:
-    df["Signal"] = "NONE"
-
-if "Decision" in df.columns:
-    df["Decision"] = df["Decision"].fillna("AVOID").astype(str).str.upper().str.strip()
-else:
-    df["Decision"] = "AVOID"
-
-
+df["Decision"] = (
+    df.get("Decision", "AVOID")
+    .fillna("AVOID")
+    .astype(str)
+    .str.upper()
+)
 
 total_stocks = len(df)
 
@@ -1663,31 +1601,19 @@ if "Current_LTP" in df.columns:
         errors="coerce"
     )
 
-# ============================================================
-# SAFE SIGNAL / DECISION NORMALIZATION
-# ============================================================
+df["Signal"] = (
+    df.get("Signal", "NONE")
+    .fillna("NONE")
+    .astype(str)
+    .str.upper()
+)
 
-if "Signal" not in df.columns:
-    df["Signal"] = "NONE"
-else:
-    df["Signal"] = (
-        df["Signal"]
-        .fillna("NONE")
-        .astype(str)
-        .str.upper()
-        .str.strip()
-    )
-
-if "Decision" not in df.columns:
-    df["Decision"] = "AVOID"
-else:
-    df["Decision"] = (
-        df["Decision"]
-        .fillna("AVOID")
-        .astype(str)
-        .str.upper()
-        .str.strip()
-    )
+df["Decision"] = (
+    df.get("Decision", "AVOID")
+    .fillna("AVOID")
+    .astype(str)
+    .str.upper()
+)
 # ============================================================
 # NORMALIZE
 # ============================================================
